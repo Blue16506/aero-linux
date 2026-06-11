@@ -2,7 +2,7 @@
 
 A modern Arch-based Linux distribution focused on simplicity, performance, reliability, and a polished Hyprland desktop experience.
 
-> Current Status: **Alpha**
+> Current Status: **Pre-alpha**
 
 ---
 
