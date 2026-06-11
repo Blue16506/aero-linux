@@ -1,0 +1,78 @@
+# Aero Linux - Minimal ISO packages
+# Base system
+base
+linux
+linux-firmware
+base-devel
+btrfs-progs
+snapper
+
+# Installer & boot
+archinstall
+archiso
+mkinitcpio-archiso
+limine
+syslinux
+
+# Hyprland minimal
+hyprland
+hyprlock
+hypridle
+hyprpaper
+waybar
+uwsm
+
+# Greeter
+greetd
+greetd-tuigreet
+
+# Terminal - Ghostty
+ghostty
+
+# Shell
+zsh
+zsh-autosuggestions
+zsh-syntax-highlighting
+zsh-completions
+
+# Essential tools
+tmux
+git
+vim
+neovim
+nano
+networkmanager
+iwd
+pipewire
+wireplumber
+pipewire-pulse
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+polkit-gnome
+gnome-keyring
+brightnessctl
+playerctl
+pamixer
+grim
+slurp
+wl-clipboard
+swaybg
+fzf
+ripgrep
+fd
+bat
+eza
+zoxide
+sudo
+reflector
+pacman-contrib
+
+# Fonts (minimal)
+noto-fonts
+noto-fonts-emoji
+ttf-jetbrains-mono-nerd
+
+# Utilities
+starship
+btop
+lazygit

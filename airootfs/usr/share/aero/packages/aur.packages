@@ -1,0 +1,19 @@
+# Aero Linux - AUR packages installed at first boot
+# Lines starting with # are ignored. One package per line.
+
+# Browsers
+# firefox  (from extra repos instead)
+# chromium (from extra repos instead)
+
+# Development
+visual-studio-code-bin
+
+# Communication
+# signal-desktop (from extra)
+# discord
+
+# Media
+spotify
+
+# Utilities
+# google-chrome

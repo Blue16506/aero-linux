@@ -1,0 +1,22 @@
+# Build outputs
+out/
+work/
+
+# ISOs
+*.iso
+
+# VM disks
+*.img
+*.qcow2
+*.vdi
+*.vmdk
+
+# Logs
+*.log
+
+# Cache
+.cache/
+
+# Editors
+.vscode/
+.idea/

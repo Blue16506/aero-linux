@@ -1,0 +1,16 @@
+[Unit]
+Description=Aero Linux First Boot Setup
+Documentation=https://github.com/aero-linux
+After=network-online.target graphical.target
+Wants=network-online.target
+ConditionPathExists=!/etc/aero-installed
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/aero/scripts/first-boot.sh
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Create snapper snapshot on boot
+Documentation=man:snapper(8)
+After=local-fs.target
+Before=snapper-timeline.timer
+ConditionPathExists=/.snapshots
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/snapper create --type pre --description "boot" --userdata "boot=1"
+ExecStart=/usr/bin/snapper create --type post --pre-number $(/usr/bin/snapper list --type pre --output json | /usr/bin/jq -r '.[] | select(.description == "boot") | .num | select(. != null)' | /usr/bin/tail -1) --description "boot" --cleanup=number --userdata "boot=1"

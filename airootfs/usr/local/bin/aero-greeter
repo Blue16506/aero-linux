@@ -1,0 +1,8 @@
+#!/bin/bash
+exec tuigreet \
+    --time \
+    --cmd Hyprland \
+    --remember \
+    --remember-user-session \
+    --user-menu \
+    --issue "Authenticate into aero  |  Live session: liveuser (no password)"

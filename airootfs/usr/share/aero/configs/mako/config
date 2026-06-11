@@ -1,0 +1,29 @@
+# Aero Linux - mako notification daemon
+
+# Appearance
+background-color=#1e1e2e
+text-color=#cdd6f4
+border-color=#89b4fa
+progress-color=#a6e3a1
+
+# Layout
+width=400
+height=200
+margin=10
+padding=12
+border-radius=8
+border-size=2
+default-timeout=5000
+
+# Position
+anchor=top-right
+
+# Grouping
+group-by=summary
+max-visible=5
+
+# Actions
+on-click=dismiss
+on-button-left=dismiss
+on-middle-click=none
+on-right-click=invoke-default-action

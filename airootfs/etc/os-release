@@ -1,0 +1,9 @@
+NAME="Aero Linux Live"
+ID=aero
+PRETTY_NAME="Aero Linux Live"
+VERSION_ID="2026.06"
+HOME_URL="https://github.com/aero-linux"
+SUPPORT_URL="https://github.com/aero-linux"
+BUG_REPORT_URL="https://github.com/aero-linux"
+LOGO="aero"
+ANSI_COLOR="1;36"

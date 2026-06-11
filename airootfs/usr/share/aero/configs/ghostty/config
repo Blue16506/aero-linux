@@ -1,0 +1,61 @@
+# Aero Linux - Ghostty terminal configuration
+
+# Font
+font-family = JetBrainsMono Nerd Font
+font-size = 12
+
+# Theme (Catppuccin Mocha inspired)
+background = #1e1e2e
+foreground = #cdd6f4
+selection-foreground = #cdd6f4
+selection-background = #585b70
+
+# Black
+palette = 0=#45475a
+# Red
+palette = 1=#f38ba8
+# Green
+palette = 2=#a6e3a1
+# Yellow
+palette = 3=#f9e2af
+# Blue
+palette = 4=#89b4fa
+# Magenta
+palette = 5=#f5c2e7
+# Cyan
+palette = 6=#94e2d5
+# White
+palette = 7=#bac2de
+# Bright black
+palette = 8=#585b70
+# Bright red
+palette = 9=#f38ba8
+# Bright green
+palette = 10=#a6e3a1
+# Bright yellow
+palette = 11=#f9e2af
+# Bright blue
+palette = 12=#89b4fa
+# Bright magenta
+palette = 13=#f5c2e7
+# Bright cyan
+palette = 14=#94e2d5
+# Bright white
+palette = 15=#a6adc8
+
+# Cursor
+cursor-style = bar
+cursor-style-blink = true
+
+# Window
+background-opacity = 0.92
+window-padding-x = 8
+window-padding-y = 4
+macos-titlebar-style = tabs
+
+# Shell
+shell-integration = zsh
+copy-on-select = clipboard
+
+# Performance
+gpu-accelerated = true

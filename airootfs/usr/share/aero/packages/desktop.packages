@@ -1,0 +1,20 @@
+# Aero Linux - Desktop packages installed at first boot
+# Lines starting with # are ignored. One package per line.
+
+# Web browser
+firefox
+
+# Documents
+libreoffice-fresh
+
+# Media
+mpv
+imv
+
+# Fonts
+noto-fonts-cjk
+ttf-ia-writer
+
+# Utilities
+btop
+lazygit

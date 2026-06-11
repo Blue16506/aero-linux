@@ -1,0 +1,8 @@
+# Aero Linux installer - passwordless sudo for live environment
+# This allows the installer to run without password prompts
+
+# Allow wheel group to run installer commands without password
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/aero-install, /usr/bin/pacstrap, /usr/bin/arch-chroot, /usr/bin/mkfs.*, /usr/bin/mount, /usr/bin/umount, /usr/bin/limine-install, /usr/bin/btrfs, /usr/bin/snapper, /usr/bin/systemctl
+
+# Allow user to run installer during live session
+liveuser ALL=(ALL) NOPASSWD: /usr/bin/aero-install

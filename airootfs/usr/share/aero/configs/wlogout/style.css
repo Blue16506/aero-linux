@@ -1,0 +1,29 @@
+* {
+    background-image: none;
+    font-family: "JetBrainsMono Nerd Font", "Noto Sans", sans-serif;
+    font-size: 14px;
+}
+
+window {
+    background-color: rgba(30, 30, 46, 0.85);
+}
+
+button {
+    background-color: rgba(49, 50, 68, 0.8);
+    color: #cdd6f4;
+    border: 2px solid rgba(69, 71, 90, 0.5);
+    border-radius: 12px;
+    margin: 8px;
+    padding: 12px 24px;
+}
+
+button:hover {
+    background-color: rgba(69, 71, 90, 0.6);
+    border-color: #89b4fa;
+    color: #89b4fa;
+}
+
+button:focus {
+    background-color: rgba(69, 71, 90, 0.6);
+    border-color: #89b4fa;
+}
