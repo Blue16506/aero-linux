@@ -60,7 +60,7 @@ EOF
 for dir in hypr waybar ghostty zsh mako wlogout walker; do
     if [[ -d "/usr/share/aero/configs/$dir" ]]; then
         mkdir -p "/home/liveuser/.config/$dir"
-        cp -r "/usr/share/aero/configs/$dir/"* "/home/liveuser/.config/$dir/" 2>/dev/null || true
+        cp -r "/usr/share/aero/configs/$dir/." "/home/liveuser/.config/$dir/" 2>/dev/null || true
     fi
 done
 

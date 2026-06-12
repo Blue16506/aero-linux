@@ -23,6 +23,7 @@ alias pacman='sudo pacman'
 alias unlock='sudo rm /var/lib/pacman/db.lck'
 alias snap='sudo snapper'
 alias snap-list='sudo snapper -c root list'
+alias aero-install='sudo /usr/local/bin/aero-install'
 
 # Yay
 alias yay='yay --editmenu'

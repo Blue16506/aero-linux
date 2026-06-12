@@ -85,21 +85,61 @@
 - [x] Fix windowrules.conf — migrate all 14 `windowrulev2` rules to modern `windowrule` syntax (nofocus→no_focus, noanim→no_anim, float→float on, match: prefix)
 - [x] Fix greetd/tuigreet launcher — switch from `--cmd Hyprland` to `--cmd start-hyprland` (uwsm wrapper) to eliminate "not recommended" warning
 - [x] **Checkpoint: Live Environment Validation Passed** — ISO builds, UEFI boots, Hyprland desktop fully functional, no warnings
+- [x] Fix select_opt Enter key — break case now matches `$'\n'|$'\r'` (not just `""`); return value via `echo "$sel"` (stdout) avoids `set -e` crash on non-zero index
+- [x] Fix install log — move `exec 2>"$INSTALL_LOG"` from line 11 to after root `EUID` check (line 173), preventing permission error for non-root
+- [x] Fix zsh config deployment — change `cp .../*` to `cp .../.` in customize_airootfs.sh to include dotfiles (`.zshrc`) in liveuser home
+- [x] Fix aero-install alias — add `alias aero-install='sudo /usr/local/bin/aero-install'` to aliases.zsh
+- [x] Fix parted dependency — add `parted` to packages.x86_64 (installer uses it for partitioning)
+
+### Validation Progress (2026-06-13)
+- [x] Installer launches from liveuser
+- [x] aero-install alias works
+- [x] Root escalation works
+- [x] Timezone selection works
+- [x] Disk selection works internally
+- [x] Partitioning succeeds (parted)
+- [x] Filesystem creation succeeds (mkfs.btrfs, mkfs.fat)
+- [x] Btrfs subvolume creation succeeds
+- [x] Subvolume mounting succeeds
 
 ---
 
-## Critical (Install Validation Phase)
+## Next Session — Installer Validation (Priority Order)
 
-- [ ] Run full installation via `bash test.sh install` and verify completion
-- [ ] Boot installed system via `bash test.sh boot` and verify first-boot automation
-- [ ] Validate AUR packages install (yay) on first boot
-- [ ] Validate Snapper snapshots on installed system
-- [ ] Validate networking (NetworkManager) on installed system
-- [ ] Validate audio (PipeWire) on installed system
-- [ ] Validate theming (Catppuccin) on installed system
-- [ ] Validate Walker launcher on installed system
+High-priority blockers:
+
+1. Investigate disk selector redraw bug (selection works internally but visual marker does not always update correctly).
+2. Identify package(s) causing pacstrap provider prompts.
+3. Make pacstrap installation fully non-interactive.
+4. Re-run full installer validation from partitioning through first boot.
+
+### Validate Post-Pacstrap Phases
+
+- [ ] Validate pacstrap completion
+- [ ] Validate arch-chroot phase
+- [ ] Validate mkinitcpio
+- [ ] Validate greetd configuration
+- [ ] Validate snapper configuration
+- [ ] Validate installer completion (Phase 10-11)
+- [ ] Validate first boot (Test 3)
+- [ ] Validate greetd login on installed system
+- [ ] Validate Hyprland startup on installed system
+- [ ] Validate user configuration deployment
+
+### Important (Lower Priority)
+
+- [ ] Fix BIOS bootloader install — `$LIMINE_FLAG` variable not expanded in quoted heredoc (aero-install)
+- [ ] Fix hardware-detect.sh: pacman `Target` directive with file path (line 32) is invalid
+- [ ] Fix hardware-detect.sh: all `pacman -S` calls masked with `|| true`
+- [ ] Fix root password silently set to user password (aero-install line 244)
 - [ ] Remove `archinstall` from `packages.x86_64` (unused; ~2MB)
 - [ ] Remove `btop` and `lazygit` from `desktop.packages` (already on ISO)
+- [ ] Remove `base-devel` from `packages.x86_64` (adds ~200-300MB)
+- [ ] Remove `snapper` from `packages.x86_64` (only needed on installed system)
+- [ ] Remove `reflector` and `pacman-contrib` from `packages.x86_64` (not essential on live ISO)
+- [ ] Consider trimming `linux-firmware` (largest ISO contributor ~700MB)
+- [ ] Walker keybinding in live environment: `SUPER+SPACE` references walker which is not on the ISO
+- [ ] Fix duplicate config directory list between `customize_airootfs.sh` (line 60) and `aero-install` (line 535)
 
 ---
 

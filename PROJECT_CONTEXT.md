@@ -4,7 +4,7 @@
 
 A custom Arch Linux distribution focused on simplicity, reliability, performance, and a polished Hyprland desktop experience. Builds as a bootable ArchISO with an interactive TUI installer and minimal post-installation setup.
 
-**Status:** Pre-alpha — Live Environment Validation Passed. ISO builds, UEFI boots, Hyprland desktop with Waybar/Ghostty/Neovim/Zsh fully functional. Now focused on installer and installed-system validation.
+**Status:** Pre-alpha — Installer Validation In Progress. ISO builds, UEFI boots, Hyprland desktop fully functional. Installer now starts, partitions, creates filesystems, and begins pacstrap. Blocker: disk selector rendering/redraw bug and pacstrap provider prompts (iptables/mkinitcpio/jack).
 
 ## Core Goals
 
@@ -238,10 +238,18 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 10. yay build errors: removed `2>/dev/null` masking from git clone and makepkg in aero-install
 11. windowrules.conf: migrated all 14 rules from `windowrulev2` to modern `windowrule` syntax — eliminates all Hyprland deprecation warnings
 12. greetd/tuigreet launcher: switched from direct `Hyprland` binary to `start-hyprland` (uwsm wrapper) — eliminates the "start-hyprland" warning
+13. select_opt navigation: corrected escape sequence patterns from `A|[[`/`B|]` to `'[A'|k`/`'[B'|j`; changed post-increment `((sel++))` to pre-increment `((++sel))` to prevent `set -e` crash
+14. select_opt Enter handling: break case now matches `$'\n'|$'\r'` (not just `""`); all UI output redirected to stderr; return value via `echo "$sel"` (stdout) avoids `set -e` trap on non-zero index
+15. Installer log permission: moved `exec 2>"$INSTALL_LOG"` from line 11 to after root EUID check (line 174)
+16. Zsh config deployment: changed `cp .../*` to `cp .../.` in customize_airootfs.sh to include dotfiles (`.zshrc`) in liveuser home — fixes zsh new-user wizard on first login
+17. aero-install alias: added `alias aero-install='sudo /usr/local/bin/aero-install'` to aliases.zsh — fixes documented command without sudo
+18. parted dependency: added `parted` to packages.x86_64 — installer uses parted for partitioning but it was not included in the live ISO
 
-### Known Issues
+### Known Issues (Installer Validation — Session 2026-06-13)
 
-- BIOS bootloader installation broken — `$LIMINE_FLAG` variable not expanded inside quoted heredoc in aero-install.
+- **Disk selector rendering/redraw bug**: Internal selection changes correctly. Enter selects correct disk. Visual `>` marker does not reliably redraw. Highest-priority UX issue.
+- **pacstrap provider prompts**: Installer prompts for provider selection during pacstrap: iptables vs iptables-legacy, mkinitcpio vs booster vs dracut, jack2 vs pipewire-jack. Installation eventually fails with "Errors occurred, no packages were upgraded."
+- **BIOS bootloader installation broken**: `$LIMINE_FLAG` variable not expanded inside quoted heredoc in aero-install.
 - NVIDIA GPU detection pacman hook target is incorrect — `hardware-detect.sh` line 32 uses invalid `Target` directive with file path.
 - `btop` and `lazygit` duplicated in both `packages.x86_64` and `desktop.packages`
 - `archinstall` on ISO is unused (~2MB but unnecessary)
@@ -260,3 +268,65 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 - [ ] Snapper snapshots work for root and home
 - [ ] Networking, audio, and theming work on installed system
 - [ ] System is clean, maintainable, and well-documented
+
+---
+
+## End of Session Summary — 2026-06-13
+
+### Installer Validation Progress
+
+The installer was tested interactively in QEMU. Key milestones:
+
+| Stage | Status |
+|---|---|
+| Installer launches from liveuser | ✅ |
+| aero-install alias works (no manual sudo) | ✅ |
+| Root escalation check | ✅ |
+| Timezone selection | ✅ |
+| Keyboard layout detection | ✅ |
+| Disk selection (internal) | ✅ |
+| Partitioning (parted) | ✅ |
+| Filesystem creation (mkfs.btrfs, mkfs.fat) | ✅ |
+| Btrfs subvolume creation | ✅ |
+| Subvolume mounting | ✅ |
+| pacstrap starts | ⚠️ |
+| pacstrap completes | ❌ |
+
+**Latest successful validation point:**
+- Installer reaches package installation phase and downloads packages successfully.
+- Disk partitioning succeeds.
+- Filesystems are created.
+- Subvolumes are mounted.
+- pacstrap starts and downloads packages.
+
+**Latest failure point:**
+- Pacstrap package resolution triggers interactive provider-selection prompts:
+  - iptables vs iptables-legacy
+  - mkinitcpio vs booster vs dracut
+  - jack2 vs pipewire-jack
+- Installation eventually stops with: "Errors occurred, no packages were upgraded."
+- Full installation has not yet completed.
+
+### What Was Fixed This Session (Fixes 18-22)
+
+1. **Fix 18 — select_opt Enter key and return value** (`aero-install:28-49`): Enter sent `$'\n'`/`$'\r'` in raw mode but break case only matched `""`. Also `return "$sel"` with `sel>0` returned non-zero exit code, triggering `set -e`. Fixed by adding newline/CR to case; redirecting UI to stderr; replacing `return "$sel"` with `echo "$sel"` (stdout) + command substitution in caller.
+
+2. **Fix 19 — Installer log permission** (`aero-install:174`): `exec 2>"$INSTALL_LOG"` was at line 11, before the root EUID check at line 173. Non-root users got a permission denied error before seeing the "must be run as root" message. Moved after the root check.
+
+3. **Fix 20 — Missing .zshrc in liveuser home** (`customize_airootfs.sh:63`): `cp .../*` skips dotfiles. Changed to `cp .../.` so `.zshrc` is copied into liveuser home, preventing zsh new-user configuration wizard on first login.
+
+4. **Fix 21 — aero-install alias for liveuser** (`aliases.zsh:26`): Added `alias aero-install='sudo /usr/local/bin/aero-install'` so the documented command works without typing `sudo`.
+
+5. **Fix 22 — Missing parted dependency** (`packages.x86_64:15`): Installer uses `parted` for partitioning but it was not listed in packages.x86_64. Added to the "Installer & boot" section.
+
+### Current Blockers
+
+1. **PRIORITY 1 — Disk selector rendering bug**: The `>` cursor marker does not reliably redraw when navigating. Internal selection tracks correctly (Enter picks the right disk), but the visual display is confusing to the user. Root cause unknown — possibly terminal escape sequence interaction with `$(...)` command substitution in `select_opt`. Needs investigation.
+
+2. **PRIORITY 2 — pacstrap provider prompts**: `pacstrap` prompts for interactive provider selection (iptables vs iptables-legacy, mkinitcpio vs booster vs dracut, jack2 vs pipewire-jack). Arch Linux recently added these as "virtual" providers that require explicit choice. The installation is non-interactive during pacstrap, causing failure with "Errors occurred, no packages were upgraded." Fix: identify the packages that trigger these prompts and handle them via `--needed`, `pacman -S --ask 4`, or explicitly specifying the provider in `packages.x86_64`.
+
+### Recommended First Task for Next Session
+
+Fix the pacstrap provider prompts (Priority 2). This is the functional blocker — even if the disk selector rendering is ugly, it still selects correctly. But pacstrap must complete without interactive prompts for the installer to succeed. The fix is to identify which packages in the pacstrap list pull in iptables/initramfs/jack as dependencies and either:
+- Add explicit provider packages (e.g., `mkinitcpio`, `pipewire-jack`) to `packages.x86_64`, or
+- Set `--noconfirm` equivalent for provider selection via `pacman.conf` or `PACMAN` environment variables.

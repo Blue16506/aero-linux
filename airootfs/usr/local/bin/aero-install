@@ -8,8 +8,6 @@ INSTALL_LOG="/var/log/aero-install.log"
 AERO_CONFIGS="/usr/share/aero/configs"
 AERO_SCRIPTS="/usr/share/aero/scripts"
 
-exec 2>"$INSTALL_LOG"
-
 # ---------------------------------------------------------------------------
 #  Utility functions
 # ---------------------------------------------------------------------------
@@ -32,22 +30,22 @@ select_opt() {
     while true; do
         for i in "${!opts[@]}"; do
             if [[ $i -eq $sel ]]; then
-                printf " \033[1;32m>\033[0m %s\n" "${opts[$i]}"
+                printf " \033[1;32m>\033[0m %s\n" "${opts[$i]}" >&2
             else
-                printf "   %s\n" "${opts[$i]}"
+                printf "   %s\n" "${opts[$i]}" >&2
             fi
         done
         read -rsn1 k
         [[ $k == $'\x1b' ]] && read -rsn2 k
         case "$k" in
-            A|[[) ((sel > 0)) && ((sel--)) ;;
-            B|])  ((sel < ${#opts[@]}-1)) && ((sel++)) ;;
-            "")   break ;;
+            '[A'|k) ((sel > 0)) && ((--sel)) ;;
+            '[B'|j) ((sel < ${#opts[@]}-1)) && ((++sel)) ;;
+            $'\n'|$'\r'|"")   break ;;
         esac
-        printf "\033[%dA" "${#opts[@]}"
+        printf "\033[%dA" "${#opts[@]}" >&2
     done
-    printf "\033[%dB" "${#opts[@]}"
-    return "$sel"
+    printf "\033[%dB" "${#opts[@]}" >&2
+    echo "$sel"
 }
 
 select_timezone() {
@@ -173,6 +171,7 @@ printf "  %s\n\n" "$(date)"
 info "Running preflight checks..."
 
 [[ $EUID -eq 0 ]] || error "Installer must be run as root"
+exec 2>"$INSTALL_LOG"
 
 if [[ -d /sys/firmware/efi/efivars ]]; then
     UEFI=true
@@ -214,9 +213,8 @@ done < <(lsblk -ndo PATH)
 
 [[ ${#AVAILABLE_DISKS[@]} -eq 0 ]] && error "No disks found"
 
-printf "Available disks:\n"
-select_opt "Select installation disk" "${AVAILABLE_DISKS[@]}"
-DISK_SEL=$?
+printf "Available disks:\n" >&2
+DISK_SEL=$(select_opt "Select installation disk" "${AVAILABLE_DISKS[@]}")
 DISK="${AVAILABLE_DISKS[$DISK_SEL]%% *}"
 info "Selected disk: $DISK"
 
@@ -403,11 +401,12 @@ echo "$USERNAME ALL=(ALL) ALL" > /etc/sudoers.d/10-aero-user
 chsh -s /usr/bin/zsh "$USERNAME"
 
 # Build yay from AUR (needed for future AUR packages)
-sudo -u "$USERNAME" git clone https://aur.archlinux.org/yay.git /tmp/yay || true
-cd /tmp/yay
-sudo -u "$USERNAME" makepkg -si --noconfirm || true
-cd /
-rm -rf /tmp/yay
+if sudo -u "$USERNAME" git clone https://aur.archlinux.org/yay.git /tmp/yay; then
+    cd /tmp/yay
+    sudo -u "$USERNAME" makepkg -si --noconfirm || true
+    cd /
+    rm -rf /tmp/yay
+fi
 
 # mkinitcpio – update hooks for btrfs
 sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck)/' /etc/mkinitcpio.conf

@@ -12,6 +12,7 @@ archiso
 mkinitcpio-archiso
 limine
 syslinux
+parted
 
 # Hyprland minimal
 hyprland

@@ -37,7 +37,7 @@
 
 ---
 
-## 3. Omarchy / Bash-First Compliance
+## 3. Bash-First Compliance
 
 | Requirement | Status | Evidence |
 |-------------|--------|---------|
