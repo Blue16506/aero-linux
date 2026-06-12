@@ -125,8 +125,9 @@ if [[ -f "$AERO_WALLPAPER" ]]; then
 fi
 
 # Apply default theme if available
+# Use -H to ensure $HOME is set to the user's home (not root's)
 if [[ -x /usr/local/bin/aero-theme ]]; then
-    sudo -u "$USERNAME" aero-theme apply catppuccin 2>/dev/null || true
+    sudo -Hu "$USERNAME" aero-theme apply catppuccin 2>/dev/null || true
 fi
 
 ok

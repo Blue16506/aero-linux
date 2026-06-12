@@ -8,7 +8,6 @@ btrfs-progs
 snapper
 
 # Installer & boot
-archinstall
 archiso
 mkinitcpio-archiso
 limine

@@ -17,3 +17,6 @@ spotify
 
 # Utilities
 # google-chrome
+
+# Application launcher (not in core/extra repos)
+walker-bin

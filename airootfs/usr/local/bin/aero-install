@@ -136,6 +136,19 @@ select_timezone() {
     done
 }
 
+# Convert disk device to partition path
+# /dev/sda       -> /dev/sda1, /dev/sda2
+# /dev/nvme0n1   -> /dev/nvme0n1p1, /dev/nvme0n1p2
+# /dev/mmcblk0   -> /dev/mmcblk0p1, /dev/mmcblk0p2
+# /dev/vda       -> /dev/vda1, /dev/vda2
+get_partition() {
+    local disk="$1" num="$2"
+    case "$disk" in
+        *nvme*|*mmcblk*|*loop*) echo "${disk}p${num}" ;;
+        *)                      echo "${disk}${num}" ;;
+    esac
+}
+
 cleanup() {
     [[ -d /mnt ]] && umount -R /mnt 2>/dev/null || true
 }
@@ -242,8 +255,8 @@ if $UEFI; then
         set 1 esp on \
         mkpart primary btrfs 1025MiB 100%
     sleep 1
-    EFI_PART="${DISK}1"
-    ROOT_PART="${DISK}2"
+    EFI_PART=$(get_partition "$DISK" 1)
+    ROOT_PART=$(get_partition "$DISK" 2)
     mkfs.fat -F32 "$EFI_PART"
 else
     parted -s "$DISK" mklabel msdos \
@@ -251,8 +264,8 @@ else
         set 1 boot on \
         mkpart primary btrfs 1025MiB 100%
     sleep 1
-    BOOT_PART="${DISK}1"
-    ROOT_PART="${DISK}2"
+    BOOT_PART=$(get_partition "$DISK" 1)
+    ROOT_PART=$(get_partition "$DISK" 2)
     mkfs.ext4 "$BOOT_PART"
 fi
 ok

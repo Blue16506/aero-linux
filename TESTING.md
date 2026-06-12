@@ -1,56 +1,157 @@
-# Aero Linux — QEMU Test Script
-
-Quick way to test the ISO in a virtual machine without using real hardware.
+# Aero Linux — Manual Installation Test
 
 ## Prerequisites
 
 ```bash
+# Required packages
 sudo pacman -S qemu-desktop edk2-ovmf
+
+# Build the ISO
+sudo bash build.sh
 ```
 
-## Usage
+---
 
+## Test 1 — Live Environment Boot
+
+**QEMU Command (UEFI):**
 ```bash
-./test.sh <mode>
+bash test.sh live
 ```
 
-## Modes
+**Expected outcomes:**
+- [ ] systemd-boot menu appears with "Aero Linux live environment"
+- [ ] Boot completes to greetd/tuigreet login screen
+- [ ] User `liveuser` with no password is shown
+- [ ] Login succeeds, shell opens with Aero ASCII art
+- [ ] `hyprland` starts (type `Hyprland` or let greetd launch it)
+- [ ] Waybar, wallpaper, and basic Hyprland keybindings work
 
-| Command | What it does |
-|---------|-------------|
-| `./test.sh live` | Boot ISO in UEFI mode. Checks: boot menu, TTY, aero-install command |
-| `./test.sh live-bios` | Same but BIOS mode (omit UEFI firmware) |
-| `./test.sh install` | Creates a 20G virtual disk, boots ISO with both attached. Run `aero-install` inside and install to `/dev/vdb` |
-| `./test.sh boot` | Boot the installed system from the virtual disk. Checks: Limine menu, greetd login, Hyprland desktop |
-| `./test.sh cleanup` | Delete the virtual disk |
+**QEMU Command (BIOS):**
+```bash
+bash test.sh live-bios
+```
 
-## Test Plan
+---
 
-### Phase 1 — Live ISO (`live`)
+## Test 2 — Fresh Installation
 
-1. systemd-boot menu appears with "Aero Linux live environment"
-2. Selecting it boots to a TTY
-3. Aero ASCII art displayed with welcome message
-4. `aero-install` command is available
+**Step 1 — Create test disk and boot installer:**
+```bash
+bash test.sh install
+```
 
-### Phase 2 — Installation (`install`)
+This creates a 20G qcow2 disk and boots the ISO with it.
 
-1. Run `aero-install`
-2. Select `/dev/vdb` (20G disk)
-3. Enter hostname, username, password
-4. Wait for installation to complete
-5. Say Y to reboot
+**Step 2 — Walk through the installer:**
 
-### Phase 3 — Installed system (`boot`)
+| Prompt | Expected input | Notes |
+|---|---|---|
+| Timezone selector | Navigate to your region, press Enter | Arrow keys + Enter |
+| Detect keyboard layout? | `Y` | Auto-detects from live env |
+| Disk selection menu | Press Enter | Selects `/dev/vda` (only disk) |
+| This will ERASE ALL DATA... | `y` | Confirms destructive operation |
+| Hostname: | `aero-test` | |
+| Username: | `tester` | |
+| User password: | `test123` | Hidden input |
+| Confirm password: | `test123` | |
+| Reboot now? | `y` | After installation completes |
 
-1. Limine menu shows "Aero Linux" entries
-2. Selecting it boots to greetd+tuigreet
-3. Login with the test user
-4. Hyprland starts with Waybar + Ghostty terminal
+**Step 3 — Wait for installation:**
+- `pacstrap` downloads ~3.2 GiB of packages (5–15 min depending on mirror)
+- Script copies configs, runs `arch-chroot`, configures system
+- If `mkinitcpio` shows `ERROR: module not found: 'libcrc32c'` — this is cosmetic, caused by the module name being `crc32c` not `libcrc32c` in the ISO's `mkinitcpio.conf`. It does not affect the installed system (correct hook list is written during install).
 
-## Tips
+**Expected outcomes:**
+- [ ] Partitioning completes without error (1 ESP + 1 Btrfs root)
+- [ ] Btrfs subvolumes created: `@`, `@home`, `@cache`, `@log`, `@snapshots`
+- [ ] Pacstrap completes without package conflicts
+- [ ] Fstab generated with UUID-based entries
+- [ ] Timezone symlink created in chroot
+- [ ] User created and added to `wheel,audio,video,input,storage,network`
+- [ ] `sudoers.d/10-aero-user` created with `ALL=(ALL) ALL`
+- [ ] greetd configured with tuigreet + Hyprland
+- [ ] NetworkManager, pipewire, wireplumber, greetd enabled
+- [ ] Snapper configs created for `root` and `home`
+- [ ] `aero-firstboot` service enabled
+- [ ] Limine bootloader installed to ESP
 
-- **Release mouse:** `Ctrl+Alt+G`
-- **Network**: Already enabled via `-nic user` (VM has internet)
-- **Disk is persistent**: Until you run `cleanup`, you can reboot the same installation
-- **BIOS vs UEFI**: Always test both modes before real hardware
+---
+
+## Test 3 — Boot Installed System
+
+**QEMU Command:**
+```bash
+bash test.sh boot
+```
+
+**Expected outcomes:**
+- [ ] Limine bootloader menu appears
+- [ ] Default entry boots the installed kernel + initramfs
+- [ ] System reaches greetd/tuigreet login screen
+- [ ] Login with `tester` / `test123`
+- [ ] `aero-firstboot.service` runs:
+  - [ ] Installs AUR packages from `aur.packages` via yay
+  - [ ] Installs desktop packages via pacman
+  - [ ] Deploys config files to `~/.config/`
+  - [ ] Enables user-level systemd services
+  - [ ] Snapper cleanup timeline enabled
+  - [ ] Creates `/etc/aero-installed` marker
+  - [ ] Disables itself (`ConditionPathExists=/etc/aero-installed`)
+- [ ] Hyprland launches after first-boot completes
+- [ ] Waybar visible at top of screen
+- [ ] Ghostty terminal available (`Super + Enter`)
+- [ ] NetworkManager connected (DHCP via QEMU user NAT)
+- [ ] `snapper list` shows root and home configs
+- [ ] Snapper snapshots exist
+
+---
+
+## Test 4 — Live-to-Installed Comparison
+
+After a successful boot of the installed system, check:
+
+| Component | Live ISO | Installed system |
+|---|---|---|
+| Bootloader | systemd-boot (UEFI) | Limine |
+| Display manager | greetd + tuigreet | greetd + tuigreet |
+| Compositor | Hyprland | Hyprland |
+| Shell | zsh (liveuser/root) | zsh (tester) |
+| Default user | liveuser (no pass) | tester (test123) |
+| AUR packages | not installed | installed via yay at first boot |
+| Desktop packages | not installed | installed via pacman at first boot |
+| Snapper | not configured | configured for / and /home |
+| Network | NetworkManager | NetworkManager |
+| Audio | PipeWire | PipeWire |
+
+---
+
+## Failure Modes & Diagnosis
+
+### ISO doesn't boot
+- Check that OVMF firmware exists: `ls /usr/share/edk2/x64/OVMF_CODE.4m.fd`
+- Try BIOS mode: `bash test.sh live-bios`
+
+### Installer hangs at timezone selector
+- The custom TUI reads from `/dev/tty` — ensure you're running QEMU with a display (not `-nographic`)
+- Use graphical QEMU window or `-display curses`
+
+### Pacstrap fails (no network)
+- QEMU user-mode networking (`-nic user`) provides NAT — check that host has internet
+- Guest should get 10.0.2.x address automatically
+- Test with `ping archlinux.org` inside the live environment
+
+### Bootloader not found after install
+- Confirm Limine was installed to ESP
+- Check that `/efi/EFI/BOOT/BOOTX64.EFI` and `/efi/EFI/Limine/limine.conf` exist
+- For UEFI: boot menu may need manual entry in UEFI firmware
+
+### First-boot service fails
+- Check journal: `journalctl -u aero-firstboot.service -b`
+- Marker file may be missing: check `/etc/aero-installed`
+- yay/AUR build failures are non-fatal (service continues)
+
+### Snapper fails
+- Ensure Btrfs snapshots subvolume exists: `btrfs subvolume list /`
+- Check `/etc/snapper/configs/root` exists
+- Enable with: `systemctl enable --now snapper-timeline.timer`
