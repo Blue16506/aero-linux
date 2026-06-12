@@ -1,8 +1,8 @@
 # Aero Linux — Manual Installation Test
 
-> **Checkpoint: Live Environment Validation Passed** (commit `8d849c5`+)
-> The live ISO has been built and verified. Test 1 items below are pre-checked.
-> Remaining tests (2–4) are the current focus.
+> **Checkpoint: Live Environment Validation Passed**
+> The live ISO has been built and verified. No Hyprland warnings remaining (windowrules migrated, uwsm integrated).
+> Test 1 items below are pre-checked. Remaining tests (2–4) are the current focus.
 
 ## Prerequisites
 
@@ -32,7 +32,8 @@ bash test.sh live
 - [x] Waybar, wallpaper, and basic Hyprland keybindings work
 - [x] Ghostty terminal opens (`Super + Enter`)
 - [x] Neovim, Zsh, starship prompt all functional
-- [ ] Hyprland `windowrulev2` deprecation warnings on stderr — cosmetic; expected until Lua migration
+- [x] No Hyprland deprecation warnings on startup (windowrules migrated to modern syntax)
+- [x] No "started without start-hyprland" warning (uwsm integrated)
 
 **QEMU Command (BIOS):**
 ```bash
@@ -77,7 +78,7 @@ This creates a 20G qcow2 disk and boots the ISO with it.
 - [ ] Timezone symlink created in chroot
 - [ ] User created and added to `wheel,audio,video,input,storage,network`
 - [ ] `sudoers.d/10-aero-user` created with `ALL=(ALL) ALL`
-- [ ] greetd configured with tuigreet + Hyprland
+- [ ] greetd configured with tuigreet + start-hyprland (uwsm wrapper)
 - [ ] NetworkManager, pipewire, wireplumber, greetd enabled
 - [ ] Snapper configs created for `root` and `home`
 - [ ] `aero-firstboot` service enabled

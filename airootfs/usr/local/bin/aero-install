@@ -419,11 +419,11 @@ cat > /etc/greetd/config.toml <<'GREETD'
 vt = 1
 
 [default_session]
-command = "tuigreet --time --cmd Hyprland --remember --remember-user-session --user-menu --issue \"Authenticate into aero\""
+command = "tuigreet --time --cmd start-hyprland --remember --remember-user-session --user-menu --issue \"Authenticate into aero\""
 user = "greeter"
 
 [initial_session]
-command = "tuigreet --time --cmd Hyprland --remember --remember-user-session --user-menu --issue \"Authenticate into aero\""
+command = "tuigreet --time --cmd start-hyprland --remember --remember-user-session --user-menu --issue \"Authenticate into aero\""
 user = "greeter"
 GREETD
 

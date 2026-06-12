@@ -87,6 +87,10 @@ The live ISO has been built and verified on UEFI systems:
 * Hyprland `pseudotile`: removed (option deleted upstream in 0.55)
 * Hyprland `vfr`: moved from `misc` to `debug` section (upstream change in 0.55)
 * Ghostty `gpu-accelerated`: removed (option no longer exists; GPU always-on)
+* snapper-boot ExecStart: replaced shell operators with systemd `-ExecStart` prefix
+* yay build errors: removed `2>/dev/null` masking from git clone and makepkg
+* windowrules.conf: migrated all 14 rules from deprecated `windowrulev2` to modern `windowrule` syntax
+* greetd launcher: switched from direct `Hyprland` to `start-hyprland` (uwsm wrapper)
 
 ---
 
@@ -105,15 +109,14 @@ The live ISO has been built and verified on UEFI systems:
 
 ### Known Remaining Issues
 
-* `windowrulev2` deprecation warnings in Hyprland — cosmetic, does not prevent desktop operation. Full Lua migration postponed until after install validation.
 * BIOS bootloader installation broken (variable not expanded in quoted heredoc)
 * NVIDIA GPU auto-detection pacman hook target incorrect
-* snapper-boot home snapshot ExecStart uses shell operators (systemd passes as literal args)
-* yay AUR build errors masked during install
+* BIOS live boot via syslinux untested
+* `btop`/`lazygit` duplicated in packages
 
 ### Future Goals (Post-Validation)
 
-* Hyprland Lua migration (windowrules + other configs)
+* Hyprland Lua migration for remaining configs (if needed)
 * BIOS bootloader fix
 * NVIDIA pacman hook fix
 * LUKS encryption support
@@ -214,11 +217,12 @@ and are deployed automatically during first boot.
 
 ## Development Status
 
-Live environment validation is complete. Development is now focused on:
+Live environment validation is complete — no Hyprland deprecation warnings, clean `start-hyprland` launch. Development is now focused on:
 
 * Full installation testing via `aero-install`
 * Installed-system boot and first-boot validation
 * Networking, audio, theming, snapper, and AUR package testing
+* BIOS boot validation
 * Beta preparation after full workflow validation
 
 ---

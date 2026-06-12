@@ -82,7 +82,9 @@
 - [x] Fix Ghostty gpu-accelerated — remove `gpu-accelerated = true` (option removed upstream)
 - [x] Fix snapper-boot ExecStart — replace shell operators `2>/dev/null || true` with systemd `-ExecStart` prefix
 - [x] Fix yay build error masking — remove `2>/dev/null` from git clone and makepkg in aero-install
-- [x] **Checkpoint: Live Environment Validation Passed** — ISO builds, UEFI boots, Hyprland desktop fully functional
+- [x] Fix windowrules.conf — migrate all 14 `windowrulev2` rules to modern `windowrule` syntax (nofocus→no_focus, noanim→no_anim, float→float on, match: prefix)
+- [x] Fix greetd/tuigreet launcher — switch from `--cmd Hyprland` to `--cmd start-hyprland` (uwsm wrapper) to eliminate "not recommended" warning
+- [x] **Checkpoint: Live Environment Validation Passed** — ISO builds, UEFI boots, Hyprland desktop fully functional, no warnings
 
 ---
 
@@ -118,7 +120,7 @@
 
 ## Future
 
-- [ ] **Hyprland Lua migration** — migrate all `.conf` files from hyprlang to Lua API (`hl.*`); start with `windowrules.conf` (11 `windowrulev2` rules). Postponed until full installation workflow is validated.
+- [ ] **Hyprland Lua migration** — migrate remaining configs from hyprlang to Lua API (`hl.*`). `windowrules.conf` already converted to modern hyprlang; full Lua migration postponed until after install validation.
 - [ ] Bluetooth auto-configuration
 - [ ] NetworkManager iwd backend integration
 - [ ] Firewall (ufw) pre-configuration
@@ -151,4 +153,4 @@
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Live Environment Validation Passed as of 2026-06-12.** Next phase: installer + installed-system validation.
+- **Live Environment Validation Passed as of 2026-06-12.** No Hyprland warnings remain. Next phase: installer + installed-system validation.

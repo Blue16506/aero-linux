@@ -236,13 +236,13 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 8. Ghostty gpu-accelerated: removed `gpu-accelerated = true` — option removed from Ghostty; GPU is always-on by design
 9. snapper-boot ExecStart: replaced shell operators `2>/dev/null || true` with systemd `-ExecStart` prefix
 10. yay build errors: removed `2>/dev/null` masking from git clone and makepkg in aero-install
+11. windowrules.conf: migrated all 14 rules from `windowrulev2` to modern `windowrule` syntax — eliminates all Hyprland deprecation warnings
+12. greetd/tuigreet launcher: switched from direct `Hyprland` binary to `start-hyprland` (uwsm wrapper) — eliminates the "start-hyprland" warning
 
 ### Known Issues
 
-- `windowrulev2` is deprecated in Hyprland 0.55 — all 11 rules produce stderr deprecation warnings. Still functional through libhyprlang 0.6.8. Full Lua migration planned after installed-system validation.
 - BIOS bootloader installation broken — `$LIMINE_FLAG` variable not expanded inside quoted heredoc in aero-install.
 - NVIDIA GPU detection pacman hook target is incorrect — `hardware-detect.sh` line 32 uses invalid `Target` directive with file path.
-- `snapper-boot.service` home snapshot uses `|| true` shell operator on ExecStart — systemd passes as literal args, not shell evaluation.
 - `btop` and `lazygit` duplicated in both `packages.x86_64` and `desktop.packages`
 - `archinstall` on ISO is unused (~2MB but unnecessary)
 - `base-devel` on ISO adds ~200-300MB unnecessarily
@@ -253,7 +253,7 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 
 - [x] `mkarchiso` builds successfully
 - [x] Produces a bootable ISO that boots to greetd+tuigreet
-- [x] Live desktop (Hyprland, Waybar, Ghostty, Neovim, Zsh) fully functional
+- [x] Live desktop (Hyprland, Waybar, Ghostty, Neovim, Zsh) fully functional — no deprecation warnings, clean uwsm launch
 - [ ] Interactive installer completes without errors
 - [ ] Installed system boots directly into Hyprland with Waybar
 - [ ] First-boot automation (AUR packages, config deployment, snapper) succeeds
