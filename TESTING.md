@@ -1,5 +1,9 @@
 # Aero Linux — Manual Installation Test
 
+> **Checkpoint: Live Environment Validation Passed** (commit `8d849c5`+)
+> The live ISO has been built and verified. Test 1 items below are pre-checked.
+> Remaining tests (2–4) are the current focus.
+
 ## Prerequisites
 
 ```bash
@@ -20,12 +24,15 @@ bash test.sh live
 ```
 
 **Expected outcomes:**
-- [ ] systemd-boot menu appears with "Aero Linux live environment"
-- [ ] Boot completes to greetd/tuigreet login screen
-- [ ] User `liveuser` with no password is shown
-- [ ] Login succeeds, shell opens with Aero ASCII art
-- [ ] `hyprland` starts (type `Hyprland` or let greetd launch it)
-- [ ] Waybar, wallpaper, and basic Hyprland keybindings work
+- [x] systemd-boot menu appears with "Aero Linux live environment"
+- [x] Boot completes to greetd/tuigreet login screen
+- [x] User `liveuser` with no password is shown
+- [x] Login succeeds, shell opens with Aero ASCII art
+- [x] `hyprland` starts (type `Hyprland` or let greetd launch it)
+- [x] Waybar, wallpaper, and basic Hyprland keybindings work
+- [x] Ghostty terminal opens (`Super + Enter`)
+- [x] Neovim, Zsh, starship prompt all functional
+- [ ] Hyprland `windowrulev2` deprecation warnings on stderr — cosmetic; expected until Lua migration
 
 **QEMU Command (BIOS):**
 ```bash

@@ -8,4 +8,7 @@ ConditionPathExists=/.snapshots
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/snapper -c root create --description "boot" --cleanup number
-ExecStart=/usr/bin/snapper -c home create --description "boot" --cleanup number 2>/dev/null || true
+ExecStart=-/usr/bin/snapper -c home create --description "boot" --cleanup number
+
+[Install]
+WantedBy=multi-user.target

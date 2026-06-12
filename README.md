@@ -2,7 +2,7 @@
 
 A modern Arch-based Linux distribution focused on simplicity, performance, reliability, and a polished Hyprland desktop experience.
 
-> Current Status: **Pre-alpha**
+> Current Status: **Pre-alpha — Live Environment Validation Passed**
 
 ---
 
@@ -65,41 +65,59 @@ Aero Linux aims to provide:
 
 ## Current Status
 
-### Alpha Milestone Achieved
+### Live Environment Validation Passed
 
-Successfully verified:
+The live ISO has been built and verified on UEFI systems:
 
+#### Boot & Desktop
 * ISO builds successfully
-* UEFI boot works
+* UEFI boot works (systemd-boot)
 * Archiso root filesystem mounts correctly
-* Live environment boots successfully
-* greetd launches successfully
-* Custom Aero login branding works
-* Passwordless liveuser login works
-* Hyprland launches successfully
-* Installer launches successfully
-* End-to-end live ISO workflow is functional
+* greetd + tuigreet launches with Aero branding
+* Passwordless `liveuser` login works
+* Hyprland launches with Waybar, Ghostty, Neovim, Zsh
+* Desktop is fully usable from the live ISO
+
+#### Fixes Applied
+* OVMF_VARS: corrected source from OVMF_CODE to OVMF_VARS template
+* KEYMAP detection: replaced broken pipe-to-read with command substitution
+* snapper-boot.service: added `[Install]` section with `WantedBy=multi-user.target`
+* Snapper config overlay: custom settings applied after `create-config`
+* Walker: removed from ISO packages (AUR-only); added `walker-bin` to aur.packages
+* Hyprland `pseudotile`: removed (option deleted upstream in 0.55)
+* Hyprland `vfr`: moved from `misc` to `debug` section (upstream change in 0.55)
+* Ghostty `gpu-accelerated`: removed (option no longer exists; GPU always-on)
 
 ---
 
 ## Roadmap
 
-### Beta Milestone
+### Installer & Installed-System Validation (Current Priority)
 
-* Full installation testing
-* First successful installed-system boot
-* Networking validation
-* Audio validation
-* Power management testing
-* Branding cleanup
-* Hyprland configuration cleanup
-* Timezone search improvements
+* [ ] Full installation via `aero-install` in QEMU VM
+* [ ] First successful installed-system boot
+* [ ] First-boot automation (AUR packages, config deployment, snapper)
+* [ ] Networking (NetworkManager)
+* [ ] Audio (PipeWire)
+* [ ] Snapper snapshots on installed system
+* [ ] Theming on installed system
+* [ ] Walker launcher install from AUR
 
-### Future Goals
+### Known Remaining Issues
 
+* `windowrulev2` deprecation warnings in Hyprland — cosmetic, does not prevent desktop operation. Full Lua migration postponed until after install validation.
+* BIOS bootloader installation broken (variable not expanded in quoted heredoc)
+* NVIDIA GPU auto-detection pacman hook target incorrect
+* snapper-boot home snapshot ExecStart uses shell operators (systemd passes as literal args)
+* yay AUR build errors masked during install
+
+### Future Goals (Post-Validation)
+
+* Hyprland Lua migration (windowrules + other configs)
+* BIOS bootloader fix
+* NVIDIA pacman hook fix
 * LUKS encryption support
 * Plymouth boot splash
-* NVIDIA auto-detection
 * Package selection during install
 * Automated ISO releases
 * Repository signing
@@ -196,15 +214,12 @@ and are deployed automatically during first boot.
 
 ## Development Status
 
-This project is currently in active development.
+Live environment validation is complete. Development is now focused on:
 
-The Alpha milestone has been reached and development is now focused on:
-
-* Installer validation
-* Installed-system testing
-* Branding polish
-* Desktop refinement
-* Beta preparation
+* Full installation testing via `aero-install`
+* Installed-system boot and first-boot validation
+* Networking, audio, theming, snapper, and AUR package testing
+* Beta preparation after full workflow validation
 
 ---
 

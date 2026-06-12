@@ -57,5 +57,4 @@ macos-titlebar-style = tabs
 shell-integration = zsh
 copy-on-select = clipboard
 
-# Performance
-gpu-accelerated = true
+

@@ -41,7 +41,7 @@ check_deps() {
     OVMF_CODE="/usr/share/edk2/x64/OVMF_CODE.4m.fd"
     OVMF_VARS="/tmp/OVMF_VARS.4m.fd"
     [[ -f "$OVMF_CODE" ]] || error "UEFI firmware not found. Install: sudo pacman -S edk2-ovmf"
-    [[ -f "$OVMF_VARS" ]] || cp "$OVMF_CODE" "$OVMF_VARS" 2>/dev/null
+    [[ -f "$OVMF_VARS" ]] || cp "/usr/share/edk2/x64/OVMF_VARS.4m.fd" "$OVMF_VARS"
     UEFI_ARGS="-drive if=pflash,format=raw,readonly=on,file=$OVMF_CODE -drive if=pflash,format=raw,file=$OVMF_VARS"
     [[ -f "$ISO" ]] || error "ISO not found at $ISO. Run build.sh first."
 }

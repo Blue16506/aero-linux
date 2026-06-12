@@ -4,7 +4,7 @@
 
 A custom Arch Linux distribution focused on simplicity, reliability, performance, and a polished Hyprland desktop experience. Builds as a bootable ArchISO with an interactive TUI installer and minimal post-installation setup.
 
-**Status:** Pre-alpha — bootable ISO, live session verified, installer functional.
+**Status:** Pre-alpha — Live Environment Validation Passed. ISO builds, UEFI boots, Hyprland desktop with Waybar/Ghostty/Neovim/Zsh fully functional. Now focused on installer and installed-system validation.
 
 ## Core Goals
 
@@ -217,29 +217,46 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 - Live environment boots to greetd/tuigreet login screen
 - Login as `liveuser` (no password) succeeds
 - Hyprland launches with Waybar, wallpaper
+- Ghostty terminal, Neovim, Zsh all work in live session
+- Desktop keybindings functional
 - `aero-install` launches from live shell
 - Timezone selector (custom TUI with search) works
 - Full installation runs to completion in QEMU
 - Limine installed to ESP with correct config
 - Installed system boots to greetd login
 
+**Applied Fixes (all validated on live ISO):**
+1. OVMF_VARS: corrected from OVMF_CODE to OVMF_VARS.4m.fd template; removed `2>/dev/null` masking
+2. KEYMAP detection: replaced pipe-to-read subshell with `$(KEYMAP=...)` command substitution
+3. snapper-boot.service: added `[Install]` section with `WantedBy=multi-user.target`
+4. Snapper config overlay: custom settings reapplied after `snapper create-config` to preserve ALLOW_GROUPS, timeline limits, NUMBER_MIN_AGE
+5. Walker: removed from `packages.x86_64` (not in core/extra); `walker-bin` already in `aur.packages`
+6. Hyprland pseudotile: removed `dwindle { pseudotile = true }` — option deleted from Hyprland 0.55
+7. Hyprland vfr: moved from `misc` to `debug` section — wiki lists `debug.vfr`, not `misc.vfr`
+8. Ghostty gpu-accelerated: removed `gpu-accelerated = true` — option removed from Ghostty; GPU is always-on by design
+9. snapper-boot ExecStart: replaced shell operators `2>/dev/null || true` with systemd `-ExecStart` prefix
+10. yay build errors: removed `2>/dev/null` masking from git clone and makepkg in aero-install
+
 ### Known Issues
 
-- OVMF_VARS in test.sh incorrectly copies OVMF_CODE instead of OVMF_VARS.4m.fd template (line 44)
-- Walker removed from ISO package list (not in core/extra repos); added to AUR as `walker-bin`; keybinding references remain in live config
-- `snapper-boot.service` lacks `[Install]` section — completely inert
-- KEYMAP auto-detection in installer is broken (pipe subshell)
-- Pre-copied snapper config files overwritten by `snapper create-config`
-- yay build errors during install masked with `|| true`
-- btop and lazygit duplicated in both ISO package list and desktop.packages
-- archinstall package in ISO is unused (Aero has its own installer)
-- base-devel on ISO adds ~200-300MB unnecessarily
+- `windowrulev2` is deprecated in Hyprland 0.55 — all 11 rules produce stderr deprecation warnings. Still functional through libhyprlang 0.6.8. Full Lua migration planned after installed-system validation.
+- BIOS bootloader installation broken — `$LIMINE_FLAG` variable not expanded inside quoted heredoc in aero-install.
+- NVIDIA GPU detection pacman hook target is incorrect — `hardware-detect.sh` line 32 uses invalid `Target` directive with file path.
+- `snapper-boot.service` home snapshot uses `|| true` shell operator on ExecStart — systemd passes as literal args, not shell evaluation.
+- `btop` and `lazygit` duplicated in both `packages.x86_64` and `desktop.packages`
+- `archinstall` on ISO is unused (~2MB but unnecessary)
+- `base-devel` on ISO adds ~200-300MB unnecessarily
+- Root password silently set to user password (aero-install line 244)
+- `linux-firmware` is largest ISO contributor (~700MB)
 
 ## Definition of Success
 
-- `mkarchiso` builds successfully
-- Produces a bootable ISO that boots to greetd+tuigreet
-- Interactive installer completes without errors
-- Installed system boots directly into Hyprland with Waybar
-- Snapper snapshots work for root and home
-- System is clean, maintainable, and well-documented
+- [x] `mkarchiso` builds successfully
+- [x] Produces a bootable ISO that boots to greetd+tuigreet
+- [x] Live desktop (Hyprland, Waybar, Ghostty, Neovim, Zsh) fully functional
+- [ ] Interactive installer completes without errors
+- [ ] Installed system boots directly into Hyprland with Waybar
+- [ ] First-boot automation (AUR packages, config deployment, snapper) succeeds
+- [ ] Snapper snapshots work for root and home
+- [ ] Networking, audio, and theming work on installed system
+- [ ] System is clean, maintainable, and well-documented

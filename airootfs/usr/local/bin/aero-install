@@ -196,7 +196,7 @@ TIMEZONE=$(select_timezone)
 info "Timezone: $TIMEZONE"
 
 if confirm "Detect keyboard layout automatically?"; then
-    localectl status 2>/dev/null | grep "X11 Layout" | awk '{print $3}' | read -r KEYMAP
+    KEYMAP=$(localectl status 2>/dev/null | grep "X11 Layout" | awk '{print $3}')
     : "${KEYMAP:=us}"
 else
     printf "Enter keyboard layout (e.g. us, de, fr): "
@@ -351,10 +351,10 @@ mkdir -p /mnt/etc/systemd/system
 cp /etc/systemd/system/aero-firstboot.service /mnt/etc/systemd/system/ 2>/dev/null || true
 cp /etc/systemd/system/snapper-boot.service /mnt/etc/systemd/system/ 2>/dev/null || true
 
-# Snapper configs
-mkdir -p /mnt/etc/snapper/configs
-cp "$AERO_CONFIGS/snapper/root" /mnt/etc/snapper/configs/root 2>/dev/null || true
-cp "$AERO_CONFIGS/snapper/home" /mnt/etc/snapper/configs/home 2>/dev/null || true
+# Snapper configs (copied into chroot for post-create-config overlay)
+mkdir -p /mnt/usr/share/aero/configs/snapper
+cp "$AERO_CONFIGS/snapper/root" /mnt/usr/share/aero/configs/snapper/root
+cp "$AERO_CONFIGS/snapper/home" /mnt/usr/share/aero/configs/snapper/home
 
 # First-boot and hardware scripts
 mkdir -p /mnt/usr/share/aero/scripts
@@ -403,9 +403,9 @@ echo "$USERNAME ALL=(ALL) ALL" > /etc/sudoers.d/10-aero-user
 chsh -s /usr/bin/zsh "$USERNAME"
 
 # Build yay from AUR (needed for future AUR packages)
-sudo -u "$USERNAME" git clone https://aur.archlinux.org/yay.git /tmp/yay 2>/dev/null || true
+sudo -u "$USERNAME" git clone https://aur.archlinux.org/yay.git /tmp/yay || true
 cd /tmp/yay
-sudo -u "$USERNAME" makepkg -si --noconfirm 2>/dev/null || true
+sudo -u "$USERNAME" makepkg -si --noconfirm || true
 cd /
 rm -rf /tmp/yay
 
@@ -441,10 +441,13 @@ systemctl enable pipewire pipewire-pulse wireplumber --global
 
 # Snapper
 snapper -c root create-config /
+cp /usr/share/aero/configs/snapper/root /etc/snapper/configs/root
 snapper -c home create-config /home
+cp /usr/share/aero/configs/snapper/home /etc/snapper/configs/home
 
-# First-boot service (already copied to /etc/systemd/system/ before chroot)
+# First-boot service and boot-time snapshots (already copied to /etc/systemd/system/ before chroot)
 systemctl enable aero-firstboot
+systemctl enable snapper-boot
 
 CHROOT
 ok

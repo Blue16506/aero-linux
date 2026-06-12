@@ -72,36 +72,53 @@
 - [x] Fix `sudo -u` to `sudo -Hu` in first-boot.sh for proper $HOME
 - [x] Remove walker from packages.x86_64 (not in core/extra); add walker-bin to aur.packages
 
+### Hotfixes (Live Environment Validation)
+- [x] Fix OVMF_VARS in test.sh — copy OVMF_VARS.4m.fd instead of OVMF_CODE; remove `2>/dev/null` masking
+- [x] Fix KEYMAP auto-detection in aero-install — replace pipe-to-read with `KEYMAP=$(...)` command substitution
+- [x] Fix snapper-boot.service — add `[Install]` section with `WantedBy=multi-user.target`
+- [x] Fix snapper config overwrite — reapply custom configs after `snapper create-config` in installer chroot
+- [x] Fix Hyprland pseudotile — remove `dwindle { pseudotile = true }` (option deleted in 0.55)
+- [x] Fix Hyprland vfr — move from `misc` to `debug` section (upstream change in 0.55)
+- [x] Fix Ghostty gpu-accelerated — remove `gpu-accelerated = true` (option removed upstream)
+- [x] Fix snapper-boot ExecStart — replace shell operators `2>/dev/null || true` with systemd `-ExecStart` prefix
+- [x] Fix yay build error masking — remove `2>/dev/null` from git clone and makepkg in aero-install
+- [x] **Checkpoint: Live Environment Validation Passed** — ISO builds, UEFI boots, Hyprland desktop fully functional
+
 ---
 
-## Critical
+## Critical (Install Validation Phase)
 
-- [ ] Fix OVMF_VARS in test.sh (line 44 copies OVMF_CODE as VARS; should copy `/usr/share/edk2/x64/OVMF_VARS.4m.fd`)
-- [ ] Fix KEYMAP auto-detection in aero-install (line 198: pipe subshell prevents variable assignment; use `KEYMAP=$(localectl status | grep "X11 Layout" | awk '{print $3}')`)
-- [ ] Fix snapper-boot.service — add `[Install]` section with `WantedBy=multi-user.target` (currently inert)
-- [ ] Fix snapper config duplication — pre-copied files (`$AERO_CONFIGS/snapper/root` and `/home`) are overwritten by `snapper create-config` in chroot
-- [ ] Remove `archinstall` from `packages.x86_64` (unused; Aero has its own installer)
-- [ ] Remove `btop` and `lazygit` from `desktop.packages` (already on ISO, installed by pacstrap)
-- [ ] Fix duplicate config directory list between `customize_airootfs.sh` (line 60) and `aero-install` (line 535)
+- [ ] Run full installation via `bash test.sh install` and verify completion
+- [ ] Boot installed system via `bash test.sh boot` and verify first-boot automation
+- [ ] Validate AUR packages install (yay) on first boot
+- [ ] Validate Snapper snapshots on installed system
+- [ ] Validate networking (NetworkManager) on installed system
+- [ ] Validate audio (PipeWire) on installed system
+- [ ] Validate theming (Catppuccin) on installed system
+- [ ] Validate Walker launcher on installed system
+- [ ] Remove `archinstall` from `packages.x86_64` (unused; ~2MB)
+- [ ] Remove `btop` and `lazygit` from `desktop.packages` (already on ISO)
 
 ---
 
 ## Important
 
-- [ ] Remove `base-devel` from `packages.x86_64` (adds ~200-300MB; only needed on installed system for yay/AUR builds)
-- [ ] Remove `snapper` from `packages.x86_64` (only needed on installed system; pacstrapped during install)
-- [ ] Remove `reflector` and `pacman-contrib` from `packages.x86_64` (not essential on live ISO)
-- [ ] Fix yay build error masking in aero-install (lines 406-410: `2>/dev/null || true` hides failures)
+- [ ] Fix BIOS bootloader install — `$LIMINE_FLAG` variable not expanded in quoted heredoc (aero-install)
 - [ ] Fix hardware-detect.sh: pacman `Target` directive with file path (line 32) is invalid
 - [ ] Fix hardware-detect.sh: all `pacman -S` calls masked with `|| true`
 - [ ] Fix root password silently set to user password (aero-install line 244)
-- [ ] Consider trimming `linux-firmware` (largest ISO contributor ~700MB; switch to `linux-firmware-whence` or reduce)
+- [ ] Remove `base-devel` from `packages.x86_64` (adds ~200-300MB)
+- [ ] Remove `snapper` from `packages.x86_64` (only needed on installed system)
+- [ ] Remove `reflector` and `pacman-contrib` from `packages.x86_64` (not essential on live ISO)
+- [ ] Consider trimming `linux-firmware` (largest ISO contributor ~700MB)
 - [ ] Walker keybinding in live environment: `SUPER+SPACE` references walker which is not on the ISO
+- [ ] Fix duplicate config directory list between `customize_airootfs.sh` (line 60) and `aero-install` (line 535)
 
 ---
 
 ## Future
 
+- [ ] **Hyprland Lua migration** — migrate all `.conf` files from hyprlang to Lua API (`hl.*`); start with `windowrules.conf` (11 `windowrulev2` rules). Postponed until full installation workflow is validated.
 - [ ] Bluetooth auto-configuration
 - [ ] NetworkManager iwd backend integration
 - [ ] Firewall (ufw) pre-configuration
@@ -125,7 +142,7 @@
 - Desktop configs live in `/usr/share/aero/configs/` on the ISO and are copied to `~/.config/` by the installer (Phase 10).
 - Config directory list is duplicated in `customize_airootfs.sh:60` and `aero-install:535` — must keep in sync.
 - `aero-firstboot.service` runs only when `/etc/aero-installed` exists AND `/etc/aero-firstboot-complete` does not.
-- `snapper-boot.service` has no `[Install]` section — currently dead code.
+- `snapper-boot.service` now has `[Install]` section with `WantedBy=multi-user.target` (fixed in hotfix batch).
 - `profiledef.sh` boot modes (`bios.syslinux`, `uefi.systemd-boot`) are for the LIVE ISO only. The installed system uses Limine.
 - greetd + tuigreet provide lightweight TTY-based login (no X11 display manager).
 - Snapper configured for root (`@`) and home (`@home`) subvolumes.
@@ -134,3 +151,4 @@
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
+- **Live Environment Validation Passed as of 2026-06-12.** Next phase: installer + installed-system validation.
