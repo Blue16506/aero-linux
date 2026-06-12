@@ -56,15 +56,17 @@ if [[ -z "$AERO_INSTALLER_RAN" && -f /usr/local/bin/aero-install ]]; then
 fi
 EOF
 
-# Pre-deploy Hyprland config for liveuser (prevents autogen warning)
-mkdir -p /home/liveuser/.config/hypr
-cp -r /usr/share/aero/configs/hypr/* /home/liveuser/.config/hypr/
-chown -R liveuser:liveuser /home/liveuser/.config/hypr
+# Pre-deploy desktop configs for liveuser
+for dir in hypr waybar ghostty zsh mako wlogout walker; do
+    if [[ -d "/usr/share/aero/configs/$dir" ]]; then
+        mkdir -p "/home/liveuser/.config/$dir"
+        cp -r "/usr/share/aero/configs/$dir/"* "/home/liveuser/.config/$dir/" 2>/dev/null || true
+    fi
+done
 
 # Pre-deploy wallpaper for liveuser
 mkdir -p /home/liveuser/.config/aero
 cp /usr/share/backgrounds/aero/default.jpg /home/liveuser/.config/aero/wallpaper
-chown -R liveuser:liveuser /home/liveuser/.config/aero
 
 chown -R liveuser:liveuser /home/liveuser
 

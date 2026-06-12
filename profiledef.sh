@@ -1,4 +1,10 @@
 # Aero Linux - archiso profile definition
+#
+# Boot modes here are for the LIVE ISO environment only:
+#   - 'bios.syslinux'   → BIOS boot on the ISO via syslinux
+#   - 'uefi.systemd-boot' → UEFI boot on the ISO via systemd-boot
+#
+# The INSTALLED system uses Limine as its bootloader (installed by aero-install).
 
 iso_name="aero-linux"
 iso_label="AERO_$(date +%Y%m)"
@@ -22,8 +28,10 @@ file_permissions=(
   ["/root/.config/starship.toml"]="0:0:644"
   ["/usr/local/bin/aero-install"]="0:0:755"
   ["/usr/local/bin/aero-greeter"]="0:0:755"
-  ["/usr/share/aero/packages/"]="0:0:644"
-  ["/usr/share/aero/configs/"]="0:0:644"
-  ["/usr/share/aero/scripts/"]="0:0:755"
-  ["/usr/share/backgrounds/aero/"]="0:0:644"
+  ["/usr/local/bin/aero-theme"]="0:0:755"
+  ["/usr/share/aero/packages/aur.packages"]="0:0:644"
+  ["/usr/share/aero/packages/desktop.packages"]="0:0:644"
+  ["/usr/share/aero/scripts/first-boot.sh"]="0:0:755"
+  ["/usr/share/aero/scripts/hardware-detect.sh"]="0:0:755"
+  ["/usr/share/backgrounds/aero/default.jpg"]="0:0:644"
 )

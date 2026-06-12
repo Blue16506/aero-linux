@@ -3,7 +3,9 @@ Description=Aero Linux First Boot Setup
 Documentation=https://github.com/aero-linux
 After=network-online.target graphical.target
 Wants=network-online.target
-ConditionPathExists=!/etc/aero-installed
+# Run only on an Aero-installed system where first-boot hasn't completed yet
+ConditionPathExists=/etc/aero-installed
+ConditionPathExists=!/etc/aero-firstboot-complete
 
 [Service]
 Type=oneshot

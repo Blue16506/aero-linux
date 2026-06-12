@@ -77,13 +77,26 @@
 - [x] Create `PROJECT_CONTEXT.md` with full project documentation
 - [x] Create `TODO.md` task tracking
 
+### Theme System
+
+- [x] Create `aero-theme` CLI script for theme switching
+- [x] Create Catppuccin Mocha theme definition (colors.toml + wallpaper)
+- [x] Create walker launcher config (config.toml + Catppuccin theme CSS)
+
+### Project Cleanup
+
+- [x] Update `PROJECT_CONTEXT.md` - accurate file listing, directory structure, and status
+- [x] Remove duplicate config copying from first-boot.sh (installer handles all configs)
+- [x] Fix hardcoded UID 1000 in installer (dynamic lookup via arch-chroot id)
+- [x] Simplify snapper-boot.service (remove fragile jq chain)
+- [x] Clarify boot modes in profiledef.sh (ISO boot vs installed system)
+- [x] Fix aero-firstboot.service ConditionPathExists (inverted logic would prevent running)
+- [x] Fix systemd service/snapper config copying in installer (paths inside chroot were invalid)
+
 ## Pending - High Priority
 
 - [ ] Test ISO build with `sudo ./build.sh`
 - [ ] Test installer in QEMU (UEFI and BIOS modes)
-- [ ] Create `aero-theme` CLI script for theme switching
-- [ ] Create Catppuccin Mocha theme definition
-- [ ] Create walker/rofi launcher config
 
 ## Pending - Medium Priority
 
@@ -107,9 +120,10 @@
 
 ## Notes
 
-- All desktop configs live in `/usr/share/aero/configs/` and are copied to `~/.config/` during first boot
-- `aero-firstboot.service` is a oneshot systemd service that removes itself after completion
-- Limine handles both UEFI and BIOS boot paths (declared in profiledef.sh)
+- Desktop configs live in `/usr/share/aero/configs/` on the ISO and are copied to `~/.config/` by the installer (Phase 10). First-boot.sh no longer re-copies them.
+- Systemd services (`aero-firstboot.service`, `snapper-boot.service`) and scripts (`first-boot.sh`, `hardware-detect.sh`) are copied from the live environment to the installed system before chroot (Phase 7).
+- `aero-firstboot.service` runs only when `/etc/aero-installed` exists AND `/etc/aero-firstboot-complete` does NOT exist. It removes itself after completion.
+- `profiledef.sh` boot modes (`bios.syslinux`, `uefi.systemd-boot`) are for the LIVE ISO only. The installed system uses Limine.
 - greetd + tuigreet provide a lightweight TTY-based login (no X11 display manager)
 - Snapper configured for root (`@`) and home (`@home`) subvolumes
 - Target ISO size: ~800MB (minimal); desktop and AUR install at first boot via network

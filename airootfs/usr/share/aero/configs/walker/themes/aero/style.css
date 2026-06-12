@@ -1,0 +1,115 @@
+@define-color window_bg_color #1e1e2e;
+@define-color accent_bg_color #45475a;
+@define-color theme_fg_color #cdd6f4;
+@define-color error_bg_color #f38ba8;
+@define-color error_fg_color #1e1e2e;
+
+* {
+  all: unset;
+}
+
+popover {
+  background: #313244;
+  border: 1px solid #585b70;
+  border-radius: 18px;
+  padding: 10px;
+}
+
+scrollbar {
+  opacity: 0;
+}
+
+.box-wrapper {
+  box-shadow:
+    0 19px 38px rgba(0, 0, 0, 0.3),
+    0 15px 12px rgba(0, 0, 0, 0.22);
+  background: @window_bg_color;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid #585b70;
+}
+
+.placeholder {
+  color: #6c7086;
+}
+
+.input {
+  caret-color: #f5c2e7;
+  background: #313244;
+  padding: 10px;
+  color: @theme_fg_color;
+  border-radius: 10px;
+}
+
+.input selection {
+  background: #585b70;
+}
+
+.list {
+  color: @theme_fg_color;
+}
+
+.item-box {
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.item-quick-activation {
+  background: rgba(69, 71, 90, 0.25);
+  border-radius: 5px;
+  padding: 10px;
+}
+
+child:selected .item-box,
+row:selected .item-box {
+  background: rgba(137, 180, 250, 0.15);
+}
+
+.item-subtext {
+  font-size: 12px;
+  opacity: 0.5;
+  color: #a6adc8;
+}
+
+.providerlist .item-subtext {
+  font-size: unset;
+  opacity: 0.75;
+}
+
+.item-image-text {
+  font-size: 28px;
+}
+
+.preview {
+  border: 1px solid rgba(137, 180, 250, 0.25);
+  border-radius: 10px;
+  color: @theme_fg_color;
+}
+
+.calc .item-text {
+  font-size: 24px;
+}
+
+.keybinds {
+  padding-top: 10px;
+  border-top: 1px solid #313244;
+  font-size: 12px;
+  color: #6c7086;
+}
+
+.keybind-bind {
+  text-transform: lowercase;
+  opacity: 0.35;
+}
+
+.keybind-label {
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid #585b70;
+}
+
+.error {
+  padding: 10px;
+  background: @error_bg_color;
+  color: @error_fg_color;
+}

@@ -5,7 +5,6 @@ set -euo pipefail
 # Runs once after installation to finalize configuration
 
 AERO_LOG="/var/log/aero-firstboot.log"
-AERO_CONFIGS="/usr/share/aero/configs"
 AERO_PACKAGES="/usr/share/aero/packages"
 AERO_SCRIPTS="/usr/share/aero/scripts"
 
@@ -79,27 +78,7 @@ if ping -c 1 archlinux.org &>/dev/null && [[ -f "$AERO_PACKAGES/aur.packages" ]]
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 3 – Desktop configurations
-# ---------------------------------------------------------------------------
-
-if [[ -d "$AERO_CONFIGS" ]]; then
-    info "Installing desktop configurations..."
-
-    mkdir -p "$USER_HOME/.config"
-
-    for dir in hypr waybar ghostty zsh mako wlogout walker; do
-        if [[ -d "$AERO_CONFIGS/$dir" ]]; then
-            cp -r "$AERO_CONFIGS/$dir" "$USER_HOME/.config/"
-            info "  Config: $dir"
-        fi
-    done
-
-    chown -R "$USERNAME":"$USERNAME" "$USER_HOME/.config"
-    ok
-fi
-
-# ---------------------------------------------------------------------------
-#  Phase 4 – Snapper initial snapshots
+#  Phase 3 – Snapper initial snapshots
 # ---------------------------------------------------------------------------
 
 info "Creating initial snapshots..."
@@ -112,7 +91,7 @@ if command -v snapper &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 5 – XDG user directories
+#  Phase 4 – XDG user directories
 # ---------------------------------------------------------------------------
 
 if command -v xdg-user-dirs-update &>/dev/null; then
@@ -122,7 +101,7 @@ if command -v xdg-user-dirs-update &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 6 – Hardware detection
+#  Phase 5 – Hardware detection
 # ---------------------------------------------------------------------------
 
 if [[ -x "$AERO_SCRIPTS/hardware-detect.sh" ]]; then
@@ -132,7 +111,7 @@ if [[ -x "$AERO_SCRIPTS/hardware-detect.sh" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 7 – Branding
+#  Phase 6 – Branding
 # ---------------------------------------------------------------------------
 
 info "Applying branding..."
@@ -153,7 +132,7 @@ fi
 ok
 
 # ---------------------------------------------------------------------------
-#  Phase 8 – Cleanup
+#  Phase 7 – Cleanup
 # ---------------------------------------------------------------------------
 
 info "Cleaning up first-boot service..."

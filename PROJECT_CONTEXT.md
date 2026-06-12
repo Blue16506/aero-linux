@@ -42,18 +42,56 @@ aero/
 │   │   ├── greetd/config.toml         # greetd + tuigreet config
 │   │   ├── limine.conf                # Limine bootloader template
 │   │   ├── mkinitcpio.conf            # Initramfs with btrfs hooks
+│   │   ├── os-release                 # Live ISO identification
 │   │   ├── pacman.d/mirrorlist        # Package mirrors
+│   │   ├── pam.d/greetd               # PAM config for greetd
 │   │   ├── snapper/config-templates/  # root and home snapper configs
 │   │   ├── sudoers.d/aero-installer   # Passwordless sudo for live env
 │   │   ├── systemd/system/
 │   │   │   ├── aero-firstboot.service # First-boot setup service
 │   │   │   └── snapper-boot.service   # Boot-time snapshot service
 │   │   └── zsh/zshenv                 # Global zsh environment
-│   └── root/                          # Live environment root
+│   ├── root/                          # Live environment root
+│   │   ├── .automated_script.sh       # Auto-launches installer on boot
+│   │   ├── .config/starship.toml      # Root prompt theme
+│   │   ├── .zshrc                     # Live env shell config
+│   │   └── customize_airootfs.sh      # archiso post-build customization
+│   └── usr/
+│       ├── local/bin/
+│       │   ├── aero-greeter           # Greeter wrapper for tuigreet
+│       │   ├── aero-install           # Main interactive installer
+│       │   └── aero-theme             # Theme switching CLI
+│       └── share/aero/
+│           ├── configs/
+│           │   ├── ghostty/config     # Terminal config
+│           │   ├── hypr/              # Modular Hyprland configs
+│           │   ├── mako/config        # Notification daemon
+│           │   ├── snapper/           # Snapper policies
+│           │   ├── walker/            # Application launcher (config.toml + theme)
+│           │   ├── waybar/            # Status bar configs
+│           │   ├── wlogout/           # Power menu configs
+│           │   └── zsh/               # Modular zsh configs
+│           ├── packages/
+│           │   ├── aur.packages       # AUR packages for first-boot
+│           │   └── desktop.packages   # Extra desktop packages
+│           ├── scripts/
+│           │   ├── first-boot.sh      # Post-install setup
+│           │   └── hardware-detect.sh # GPU/CPU detection
+│           └── themes/                # Theme definitions
+├── efiboot/                           # archiso UEFI boot files
+├── limine/                            # Limine bootloader binaries
+├── out/                               # ISO build output
+├── syslinux/                          # archiso BIOS boot files
 ├── packages.x86_64                    # Packages included in ISO
 ├── profiledef.sh                      # archiso profile definition
-└── pacman.conf                        # Build-time pacman config
+├── pacman.conf                        # Build-time pacman config
+├── build.sh                           # ISO build wrapper
+├── test.sh                            # QEMU test helper
+└── TESTING.md                         # Test documentation
 ```
+
+> **Note:** `syslinux/` and `efiboot/` are standard archiso boot directories for the live ISO.
+> Limine is installed as the bootloader on the *target system* during installation.
 
 ## Btrfs Subvolume Layout
 
@@ -108,7 +146,8 @@ hypr/
 ├── input.conf         # Keyboard, touchpad, mouse
 ├── binds.conf         # Keybindings
 ├── appearance.conf    # Animations, gaps, borders, colors
-└── autostart.conf     # Startup applications
+├── autostart.conf     # Startup applications
+└── windowrules.conf   # Window rules per application
 ```
 
 ## Theme System
@@ -127,7 +166,7 @@ themes/<theme-name>/
 
 ## Desktop Environment
 
-Comprises Hyprland (window manager), Waybar (status bar), Ghostty (terminal), greetd+tuigreet (display manager), mako (notifications), fuzzel/rofi-wayland (launcher), wlogout (power menu), hyprlock+swaybg+lockscreen, and hypridle (idle).
+Comprises Hyprland (window manager), Waybar (status bar), Ghostty (terminal), greetd+tuigreet (display manager), mako (notifications), walker (application launcher), wlogout (power menu), hyprlock+swaybg+lockscreen, and hypridle (idle).
 
 ## Coding Standards
 
@@ -140,44 +179,49 @@ Comprises Hyprland (window manager), Waybar (status bar), Ghostty (terminal), gr
 - No unnecessary dependencies
 - Readability and maintainability preferred over cleverness
 
-## Files Already Created (13 files)
+## Files Created (43 files)
 
-| File | Purpose |
-|------|---------|
-| `aero/packages.x86_64` | ISO package list with Hyprland, Ghostty, greetd, zsh, etc. |
-| `aero/profiledef.sh` | archiso profile metadata and permissions |
-| `aero/pacman.conf` | Build-time pacman configuration |
-| `aero/airootfs/etc/greetd/config.toml` | greetd TUI greeter config |
-| `aero/airootfs/etc/limine.conf` | Bootloader configuration template |
-| `aero/airootfs/etc/mkinitcpio.conf` | Initramfs with btrfs + LUKS hooks |
-| `aero/airootfs/etc/pacman.d/mirrorlist` | Package mirrors |
-| `aero/airootfs/etc/snapper/config-templates/root` | Root snapper policy |
-| `aero/airootfs/etc/snapper/config-templates/home` | Home snapper policy |
-| `aero/airootfs/etc/sudoers.d/aero-installer` | Live environment sudo rules |
-| `aero/airootfs/etc/systemd/system/aero-firstboot.service` | First-boot systemd service |
-| `aero/airootfs/etc/systemd/system/snapper-boot.service` | Boot-time snapshot service |
-| `aero/airootfs/etc/zsh/zshenv` | Global zsh environment variables |
-
-## Files Not Yet Created
-
-| File | Priority |
-|------|----------|
-| `aero/airootfs/usr/local/bin/aero-install` | HIGH - Main installer script |
-| `aero/airootfs/usr/share/aero/scripts/first-boot.sh` | HIGH - First boot setup |
-| `aero/airootfs/usr/share/aero/scripts/hardware-detect.sh` | MEDIUM - Hardware detection |
-| `aero/airootfs/usr/share/aero/packages/aur.packages` | MEDIUM - AUR package list |
-| `aero/airootfs/etc/pam.d/greetd` | HIGH - PAM config for greetd |
-| `aero/airootfs/root/.zshrc` | MEDIUM - Live env shell config |
-| `aero/build.sh` | HIGH - ISO build wrapper |
-| `aero/limine/*` | HIGH - Limine bootloader binaries |
-| `aero/airootfs/usr/share/aero/configs/hypr/*` | HIGH - Hyprland modular configs |
-| `aero/airootfs/usr/share/aero/configs/waybar/*` | HIGH - Waybar config |
-| `aero/airootfs/usr/share/aero/configs/ghostty/*` | HIGH - Ghostty config |
-| `aero/airootfs/usr/share/aero/configs/zsh/*` | HIGH - User zsh config |
-| `aero/airootfs/usr/share/aero/configs/mako/*` | MEDIUM - Notification config |
-| `aero/airootfs/usr/share/aero/configs/wlogout/*` | MEDIUM - Power menu |
-| `aero/airootfs/usr/share/aero/themes/*` | LOW - Theme definitions |
-| `aero/airootfs/root/customize_airootfs.sh` | HIGH - archiso post-build script |
+| Category | File | Purpose |
+|----------|------|---------|
+| **ISO Profile** | `packages.x86_64` | ISO package list with Hyprland, Ghostty, greetd, zsh, etc. |
+| | `profiledef.sh` | archiso profile metadata and permissions |
+| | `pacman.conf` | Build-time pacman configuration |
+| | `build.sh` | ISO build wrapper |
+| **Live Environment** | `airootfs/root/.zshrc` | Live env shell config |
+| | `airootfs/root/.automated_script.sh` | Auto-launch installer on boot |
+| | `airootfs/root/.config/starship.toml` | Root prompt theme |
+| | `airootfs/root/customize_airootfs.sh` | archiso post-build customization |
+| **System Config** | `airootfs/etc/greetd/config.toml` | greetd TUI greeter config |
+| | `airootfs/etc/pam.d/greetd` | PAM config for greetd |
+| | `airootfs/etc/limine.conf` | Bootloader configuration template |
+| | `airootfs/etc/mkinitcpio.conf` | Initramfs with btrfs + LUKS hooks |
+| | `airootfs/etc/pacman.d/mirrorlist` | Package mirrors |
+| | `airootfs/etc/os-release` | Live ISO identification |
+| | `airootfs/etc/sudoers.d/aero-installer` | Live environment sudo rules |
+| | `airootfs/etc/zsh/zshenv` | Global zsh environment variables |
+| **Snapper Configs** | `airootfs/etc/snapper/config-templates/root` | Root snapper policy (ISO) |
+| | `airootfs/etc/snapper/config-templates/home` | Home snapper policy (ISO) |
+| | `airootfs/usr/share/aero/configs/snapper/root` | Root snapper policy (installed) |
+| | `airootfs/usr/share/aero/configs/snapper/home` | Home snapper policy (installed) |
+| **Systemd Services** | `airootfs/etc/systemd/system/aero-firstboot.service` | First-boot setup service |
+| | `airootfs/etc/systemd/system/snapper-boot.service` | Boot-time snapshot service |
+| **Installer** | `airootfs/usr/local/bin/aero-install` | Main interactive installer script |
+| | `airootfs/usr/local/bin/aero-greeter` | Greeter wrapper for tuigreet |
+| **First Boot** | `airootfs/usr/share/aero/scripts/first-boot.sh` | First boot setup script |
+| | `airootfs/usr/share/aero/scripts/hardware-detect.sh` | GPU/CPU detection script |
+| **Packages** | `airootfs/usr/share/aero/packages/aur.packages` | AUR packages list |
+| | `airootfs/usr/share/aero/packages/desktop.packages` | Desktop extras list |
+| **Desktop Configs** | `airootfs/usr/share/aero/configs/hypr/*` (7 files) | Modular Hyprland configs |
+| | `airootfs/usr/share/aero/configs/waybar/*` (2 files) | Waybar config + style |
+| | `airootfs/usr/share/aero/configs/ghostty/config` | Ghostty terminal config |
+| | `airootfs/usr/share/aero/configs/zsh/*` (6 files) | Modular zsh configs |
+| | `airootfs/usr/share/aero/configs/mako/config` | Notification daemon config |
+| | `airootfs/usr/share/aero/configs/wlogout/*` (2 files) | Power menu config |
+| | `airootfs/usr/share/aero/configs/walker/*` | Application launcher config + theme |
+| **Themes** | `airootfs/usr/local/bin/aero-theme` | Theme switching CLI |
+| | `airootfs/usr/share/aero/themes/catppuccin/*` | Catppuccin Mocha theme |
+| **Testing** | `test.sh` | QEMU test script |
+| | `TESTING.md` | Test documentation |
 
 ## Definition of Success
 

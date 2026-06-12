@@ -328,7 +328,29 @@ genfstab -U /mnt >> /mnt/etc/fstab
 ok
 
 # ---------------------------------------------------------------------------
-#  Phase 7 – Chroot configuration
+#  Phase 7 – Copy system files to installed system
+# ---------------------------------------------------------------------------
+
+info "Copying system configuration files..."
+
+# Systemd services (copied from live environment before chroot)
+mkdir -p /mnt/etc/systemd/system
+cp /etc/systemd/system/aero-firstboot.service /mnt/etc/systemd/system/ 2>/dev/null || true
+cp /etc/systemd/system/snapper-boot.service /mnt/etc/systemd/system/ 2>/dev/null || true
+
+# Snapper configs
+mkdir -p /mnt/etc/snapper/configs
+cp "$AERO_CONFIGS/snapper/root" /mnt/etc/snapper/configs/root 2>/dev/null || true
+cp "$AERO_CONFIGS/snapper/home" /mnt/etc/snapper/configs/home 2>/dev/null || true
+
+# First-boot and hardware scripts
+mkdir -p /mnt/usr/share/aero/scripts
+cp "$AERO_SCRIPTS/first-boot.sh" /mnt/usr/share/aero/scripts/ 2>/dev/null || true
+cp "$AERO_SCRIPTS/hardware-detect.sh" /mnt/usr/share/aero/scripts/ 2>/dev/null || true
+ok
+
+# ---------------------------------------------------------------------------
+#  Phase 8 – Chroot configuration
 # ---------------------------------------------------------------------------
 
 info "Configuring system..."
@@ -405,21 +427,17 @@ systemctl enable NetworkManager
 systemctl enable pipewire pipewire-pulse wireplumber --global
 
 # Snapper
-mkdir -p /etc/snapper/config-templates
-cp /usr/share/aero/configs/snapper/root /etc/snapper/configs/root 2>/dev/null || true
-cp /usr/share/aero/configs/snapper/home /etc/snapper/configs/home 2>/dev/null || true
 snapper -c root create-config /
 snapper -c home create-config /home
 
-# First-boot service
-cp /usr/share/aero/systemd/aero-firstboot.service /etc/systemd/system/ 2>/dev/null || true
+# First-boot service (already copied to /etc/systemd/system/ before chroot)
 systemctl enable aero-firstboot
 
 CHROOT
 ok
 
 # ---------------------------------------------------------------------------
-#  Phase 8 – Install Limine
+#  Phase 9 – Install Limine
 # ---------------------------------------------------------------------------
 
 info "Installing Limine bootloader..."
@@ -496,21 +514,22 @@ fi
 ok
 
 # ---------------------------------------------------------------------------
-#  Phase 9 – Copy desktop configurations
+#  Phase 10 – Copy desktop configurations
 # ---------------------------------------------------------------------------
 
 info "Copying desktop configurations..."
 if [[ -d "$AERO_CONFIGS" ]]; then
-    cp -r "$AERO_CONFIGS"/hypr /mnt/home/"$USERNAME"/.config/ 2>/dev/null || true
-    cp -r "$AERO_CONFIGS"/waybar /mnt/home/"$USERNAME"/.config/ 2>/dev/null || true
-    cp -r "$AERO_CONFIGS"/ghostty /mnt/home/"$USERNAME"/.config/ 2>/dev/null || true
-    cp -r "$AERO_CONFIGS"/zsh /mnt/home/"$USERNAME"/.config/ 2>/dev/null || true
-    chown -R 1000:1000 /mnt/home/"$USERNAME"/.config
+    for dir in hypr waybar ghostty zsh mako wlogout walker; do
+        [[ -d "$AERO_CONFIGS/$dir" ]] && cp -r "$AERO_CONFIGS/$dir" /mnt/home/"$USERNAME"/.config/
+    done
+    USER_UID=$(arch-chroot /mnt id -u "$USERNAME")
+    USER_GID=$(arch-chroot /mnt id -g "$USERNAME")
+    chown -R "$USER_UID":"$USER_GID" /mnt/home/"$USERNAME"/.config
 fi
 ok
 
 # ---------------------------------------------------------------------------
-#  Phase 10 – Finalize
+#  Phase 11 – Finalize
 # ---------------------------------------------------------------------------
 
 # Write config for first-boot script
