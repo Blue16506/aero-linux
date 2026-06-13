@@ -457,29 +457,23 @@ if $UEFI; then
     cat > /mnt/boot/EFI/BOOT/limine.conf <<'LIMINE'
 timeout: 5
 
-entry "Aero Linux"
+/Aero Linux
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@ quiet loglevel=3
     module_path: boot():/initramfs-linux.img
 
-entry "Aero Linux (fallback)"
+/Aero Linux (fallback)
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@ quiet loglevel=3
     module_path: boot():/initramfs-linux-fallback.img
 
-entry "Aero Linux (snapshot)"
+/Aero Linux (snapshot)
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@/.snapshots/X/snapshot quiet loglevel=3
     module_path: boot():/initramfs-linux.img
-
-entry "Reboot"
-    protocol: reboot
-
-entry "Power Off"
-    protocol: poweroff
 LIMINE
     ROOT_UUID=$(blkid -s UUID -o value "$ROOT_PART")
     sed -i "s/ROOT_UUID/$ROOT_UUID/g" /mnt/boot/EFI/BOOT/limine.conf
@@ -489,29 +483,23 @@ limine-install --bios /boot /dev/DISK
 cat > /boot/limine.conf <<'LIMINE'
 timeout: 5
 
-entry "Aero Linux"
+/Aero Linux
     protocol: linux
     kernel_path: /boot/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@ quiet loglevel=3
     module_path: /boot/initramfs-linux.img
 
-entry "Aero Linux (fallback)"
+/Aero Linux (fallback)
     protocol: linux
     kernel_path: /boot/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@ quiet loglevel=3
     module_path: /boot/initramfs-linux-fallback.img
 
-entry "Aero Linux (snapshot)"
+/Aero Linux (snapshot)
     protocol: linux
     kernel_path: /boot/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@/.snapshots/X/snapshot quiet loglevel=3
     module_path: /boot/initramfs-linux.img
-
-entry "Reboot"
-    protocol: reboot
-
-entry "Power Off"
-    protocol: poweroff
 LIMINE
 CHROOT
     ROOT_UUID=$(blkid -s UUID -o value "$ROOT_PART")

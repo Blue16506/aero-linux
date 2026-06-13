@@ -2,7 +2,7 @@
 
 A modern Arch-based Linux distribution focused on simplicity, performance, reliability, and a polished Hyprland desktop experience.
 
-> Current Status: **Pre-alpha — Boot Architecture Fix — ESP mounted at /boot**
+> Current Status: **Pre-alpha — Limine Config Syntax Fix — entries use `/Title` syntax**
 
 ---
 
@@ -65,22 +65,34 @@ Aero Linux aims to provide:
 
 ## Current Status
 
-### Milestone: Boot Architecture Fix — ESP at `/boot`
+### Milestone: Limine Config Syntax Fix — entries use `/Title` syntax
 
-The installed system now uses the ESP (FAT32) as `/boot`, placing kernel and initramfs directly on a FAT filesystem that Limine can read. This replaces the broken `limine-install --efi /efi` approach.
+The Limine v12.3.0 bootloader now sees valid menu entries and the boot menu appears. The only issue was config file syntax.
 
 #### What Changed
-* **ESP mount point**: `/efi` → `/boot` — the FAT32 partition is now mounted at `/boot` instead of `/efi`
-* **EFI binary**: `limine-install --efi /efi` (silent no-op) → `cp /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI`
-* **Config path**: `/efi/limine.conf` → `/boot/EFI/BOOT/limine.conf`
-* **Kernel paths**: `/boot/vmlinuz-linux` (relative to Btrfs) → `boot():/vmlinuz-linux` (on the ESP, via `boot():/` prefix — Limine's reference to the config's partition)
-* **Result**: mkinitcpio writes `vmlinuz-linux` and `initramfs-linux.img` directly to the FAT32 ESP, and Limine can read them at boot
-* All three boot entries (default, fallback, snapshot) updated
 
-#### Validation Status
-* Installation pipeline: ✅ complete
-* First boot via OVMF: ⏳ pending
-* BIOS path: 🔴 unchanged (still broken — separate fix)
+* **Entry syntax**: `entry "Aero Linux"` → `/Aero Linux` (Limine v12 requires `/` at line start to mark a menu entry)
+* **Removed entries**: `Reboot` and `Power Off` — `protocol: reboot` and `protocol: poweroff` are not valid in Limine v12 (supported protocols: `linux`, `limine`, `multiboot1/2`, `efi`, `efi_boot_entry`, `bios`)
+* **Config location**: `/boot/EFI/BOOT/limine.conf` (UEFI fallback path — no NVRAM entry needed)
+* **Kernel paths**: `boot():/vmlinuz-linux` (Limine's reference to the ESP partition root)
+
+#### Validation History
+
+| Fix | Status |
+|---|---|
+| ESP mounted at `/boot` (FAT32, Limine-readable) | ✅ verified |
+| `BOOTX64.EFI` copied to `/EFI/BOOT/` on ESP | ✅ verified |
+| `limine.conf` written alongside EFI binary | ✅ verified |
+| OVMF PXE issue = stale `OVMF_VARS.4m.fd` | ✅ resolved |
+| Limine loads and displays "Limine 12.3.0 (x86-64, UEFI)" | ✅ verified |
+| Config syntax (`entry` → `/Title`) | ✅ fixed |
+| Boot into installed Aero system | ⏳ pending |
+
+#### Known Issues
+
+* `protocol: reboot` / `protocol: poweroff` removed (not supported in Limine v12)
+* BIOS bootloader path still broken (separate issue)
+* Snapper 0.13.1 arch-chroot failure (workaround: first-boot init)
 
 ---
 
@@ -102,13 +114,13 @@ The installed system now uses the ESP (FAT32) as `/boot`, placing kernel and ini
 - [ ] First-boot service disables itself
 - [ ] `/etc/aero-firstboot-complete` marker exists
 
-### Known Remaining Issues
-
-* Snapper 0.13.1 `create-config` fails inside `arch-chroot` — root cause unknown (workaround: runs on first boot)
-* BIOS bootloader installation broken (variable not expanded in quoted heredoc, `limine-install` not available in chroot)
-* BIOS live boot via syslinux untested
-* NVIDIA GPU auto-detection pacman hook target incorrect
-* `btop`/`lazygit` duplicated in packages
+| Issue | Impact | Status |
+|---|---|---|---|
+| Snapper 0.13.1 `create-config` fails inside `arch-chroot` | Snapper not configured during install | Workaround: first-boot init |
+| BIOS bootloader installation broken (quoted heredoc + missing `limine-install`) | BIOS installation unsupported | Unfixed |
+| BIOS live boot via syslinux untested | BIOS path unvalidated | Unfixed |
+| NVIDIA GPU auto-detection pacman hook target incorrect | NVIDIA systems need manual fix | Unfixed |
+| `btop`/`lazygit` duplicated in packages | Cosmetic | Unfixed |
 
 ### Future Goals (Post-Validation)
 

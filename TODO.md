@@ -78,6 +78,9 @@
 - [x] Copy BOOTX64.EFI to `/boot/EFI/BOOT/BOOTX64.EFI` (UEFI fallback path, no NVRAM needed)
 - [x] Write `limine.conf` at `/boot/EFI/BOOT/limine.conf` with `boot():/vmlinuz-linux` kernel paths
 - [x] Fix broken kernel/module paths: previously `/boot/vmlinuz-linux` resolved relative to ESP root → did not exist; now `boot():/vmlinuz-linux` correctly references the ESP root
+- [x] **Limine v12 config syntax**: replace `entry "Title"` with `/Title` — Limine's parser only recognizes lines starting with `/` as menu entries. The `entry "..."` syntax is GRUB/systemd-boot, not Limine. Every `/` in option values (e.g. `boot():/vmlinuz-linux`) was rejected by the `if *(p-2) != '\n'` line-start guard, causing "config file contains no valid entries".
+- [x] Remove `protocol: reboot` and `protocol: poweroff` entries — not supported in Limine v12. Valid protocols: `linux`, `limine`, `multiboot1/2`, `efi`, `efi_boot_entry`, `bios`.
+- [x] OVMF PXE issue was stale `/tmp/OVMF_VARS.4m.fd` — deleting this file fixed the PXE fallthrough
 - [x] Fix OVMF_VARS in test.sh — copy OVMF_VARS.4m.fd instead of OVMF_CODE; remove `2>/dev/null` masking
 - [x] Fix KEYMAP auto-detection in aero-install — replace pipe-to-read with `KEYMAP=$(...)` command substitution
 - [x] Fix snapper-boot.service — add `[Install]` section with `WantedBy=multi-user.target`
@@ -123,12 +126,15 @@
 
 ---
 
-## Current Phase: Installed System Validation
+## Current Phase: First Boot Validation
 
 ### Priority 1 — First Boot Validation
 
-- [ ] Boot installed system via `bash test.sh boot`
-- [ ] Limine menu appears and boots default entry (`boot():/vmlinuz-linux` on ESP)
+- [ ] Rebuild ISO (`sudo bash build.sh`)
+- [ ] Delete old test artifacts: `rm -f /tmp/aero-test-disk.qcow2 /tmp/OVMF_VARS.4m.fd`
+- [ ] Install: `bash test.sh install`
+- [ ] Boot installed system: `bash test.sh boot`
+- [ ] Limine menu appears and boots default entry (`/Aero Linux` — `boot():/vmlinuz-linux`)
 - [ ] System reaches greetd/tuigreet login screen
 - [ ] Login with created user succeeds
 

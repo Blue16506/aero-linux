@@ -1,8 +1,8 @@
 # Aero Linux — Manual Installation Test
 
-> **Checkpoint: Boot Architecture Fix — ESP at `/boot` (2026-06-13)**
-> The installer now mounts the ESP at `/boot` instead of `/efi`, places `BOOTX64.EFI` at `/EFI/BOOT/BOOTX64.EFI` on the ESP, and writes `limine.conf` alongside it with `boot():/` kernel paths. BIOS path unchanged (still broken).
-> Tests 1–2 pre-checked. Test 3 is current focus. Test 4 deferred until beta.
+> **Checkpoint: Limine Config Syntax Fix — `/Title` entries (2026-06-13)**
+> Limine v12.3.0 now sees valid menu entries (BOOTX64.EFI, ESP layout, and OVMF_VARS all verified working).
+> The only remaining issue was `entry "Title"` → `/Title` syntax. Tests 1–2 pre-checked. Test 3 is current focus.
 
 ## Prerequisites
 

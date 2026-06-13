@@ -36,6 +36,9 @@ Last updated: 2026-06-13
 - [x] Direct binary copy: `cp /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI`
 - [x] Config at `/boot/EFI/BOOT/limine.conf` with `boot():/vmlinuz-linux` kernel paths
 - [x] Kernel/module paths fixed: previously `/boot/vmlinuz-linux` resolved relative to ESP root (wrong); now `boot():/vmlinuz-linux` correctly references ESP root
+- [x] **Limine v12 config syntax fix**: `entry "Title"` → `/Title` — Limine's parser only recognizes `/` at line start as entry titles. `entry "..."` produced zero valid entries.
+- [x] **Removed unsupported protocols**: `protocol: reboot` and `protocol: poweroff` removed (not in Limine v12's valid protocol list)
+- [x] **OVMF_VARS fix**: stale `/tmp/OVMF_VARS.4m.fd` caused PXE fallthrough — deleting it restored boot to Limine
 - [x] Pacman keyring: archiso-style boot-time initialization
 - [x] Installer package installation: removed `pacstrap -K`
 - [x] Password prompt: replaced `makepkg -si` with `makepkg -d` + `pacman -U`
@@ -47,9 +50,12 @@ Last updated: 2026-06-13
 ## In Progress
 
 ### First Boot Validation
-- [ ] Boot installed system from QEMU test disk
-- [ ] Limine menu appears and boots
-- [ ] System reaches greetd login
+- [ ] Rebuild ISO (`sudo bash build.sh`)
+- [ ] Delete old artifacts: `rm -f /tmp/aero-test-disk.qcow2 /tmp/OVMF_VARS.4m.fd`
+- [ ] Install: `bash test.sh install`
+- [ ] Boot installed system: `bash test.sh boot`
+- [ ] Limine menu appears with `/Aero Linux` entry
+- [ ] System boots and reaches greetd login
 - [ ] Login with created user
 - [ ] aero-firstboot.service runs:
   - [ ] Snapper create-config for root and home
@@ -84,13 +90,14 @@ Last updated: 2026-06-13
 | BIOS live boot via syslinux untested | BIOS path unvalidated | Unfixed |
 | NVIDIA hook target incorrect | NVIDIA systems need manual fix | Unfixed |
 | `btop`/`lazygit` duplicated in packages | Cosmetic | Unfixed |
+| `protocol: reboot`/`poweroff` not in Limine v12 | Reboot/poweroff entries removed | Fixed by removal |
 
 ---
 
 ## Next Milestone
 
-**Installed system reaches bootloader and boots successfully in QEMU**
-- Limine menu appears and boots default entry
+**First successful boot into installed Aero system**
+- Limine menu appears and `/Aero Linux` entry boots
 - System reaches greetd login with created user
 - First-boot service runs, Snapper initializes
 - Hyprland desktop starts
@@ -101,10 +108,19 @@ After: beta preparation (BIOS boot fix, known issue cleanup, release pipeline).
 
 ---
 
-## Update (2026-06-13) — Boot Architecture Fix
+## Updates
 
-**Problem:** Installed system did not boot. OVMF fell through to PXE. Root cause: two independent failures:
-1. `limine-install` binary not available in chroot (only core `limine` package is pacstrapped; `limine-install` is in `limine-mkinitcpio-hook` AUR package)
-2. Limine cannot read Btrfs — kernel/initramfs on `@` subvolume unreachable
+### 2026-06-13 — Limine v12 Config Syntax Fix
 
-**Fix:** Mount ESP at `/boot` instead of `/efi`. Copy BOOTX64.EFI directly. Write `limine.conf` with `boot():/` kernel paths. Kernel/initramfs now on FAT32, Limine-compatible.
+**Problem:** Limine 12.3.0 displayed "config file contains no valid entries" after boot architecture fix. The `entry "Title"` syntax is from GRUB/systemd-boot — Limine v12 requires `/Title` at line start.
+
+**Root cause** (from `common/lib/config.c`):
+- `config_get_entry_name()` scans for `/` characters to find menu entries
+- The `/` must be at the start of a line (preceded by `\n` or at EOF)
+- `entry "Aero Linux"` contains no `/` at all — scanner skips past
+- The only `/` characters are inside `boot():/vmlinuz-linux` — rejected by the `if *(p-2) != '\n'` line-start guard
+- Result: zero entries found
+
+**Fix:** `entry "Aero Linux"` → `/Aero Linux`. Also removed `protocol: reboot` and `protocol: poweroff` entries (not in Limine v12 protocol list).
+
+### 2026-06-13 — Boot Architecture Fix
