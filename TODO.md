@@ -1,8 +1,8 @@
 # Aero Linux — TODO
 
-**Version 0.1.0-alpha** — "Aero Alpha"
+**Version 0.1.1-alpha** — "Aero Alpha"
 
-Project status: PRE-ALPHA → ALPHA (core architecture complete, not feature-complete)
+Project status: ALPHA — First successful desktop boot achieved. Alpha stabilization phase.
 
 ---
 
@@ -154,19 +154,30 @@ Project status: PRE-ALPHA → ALPHA (core architecture complete, not feature-com
 
 ## Known Bugs (Alpha)
 
-### Boot Issues
-- [ ] **Black screen after Limine menu** — default entry loads but no output reaches greetd. High priority.
-- [ ] **Fallback entry untested** — may have same or different failure mode.
-- [ ] **No verbose kernel output** — cmdline includes `quiet loglevel=3`. Remove for diagnosis.
-- [ ] **OVMF_VARS persistence** — stale `/tmp/OVMF_VARS.4m.fd` causes PXE fallthrough. Must delete before each boot test.
+### Desktop & Login
+- [ ] **Login banner shows `Linux` instead of `Aero Linux`**: `/etc/os-release` PRETTY_NAME needs update.
+- [ ] **Empty home directory**: XDG user directories (Desktop, Downloads, etc.) may not be created.
+- [ ] **Desktop wallpaper intentionally black until first-boot**: hyprpaper migration complete. Wallpaper set by `aero-theme apply catppuccin` during first-boot Phase 7.
 
 ### Snapper
-- [ ] `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`. Root cause unknown. Workaround: first-boot init.
+- [ ] `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error`. Root cause unknown. Workaround: first-boot init.
+- [ ] `snapper-boot.service` lacks `[Install]` section — never enabled by any script.
+- [ ] Snapshot boot entry (`/Aero Linux (snapshot)`) untested.
+
+### Service Validation (Pending)
+- [ ] NetworkManager DHCP connectivity in QEMU user NAT
+- [ ] PipeWire audio output
+- [ ] yay AUR helper package installation
+- [ ] first-boot.service end-to-end (all 8 phases)
+- [ ] Reboot idempotency
+
+### Test Infrastructure
+- [ ] OVMF_VARS persistence — stale state causes PXE fallthrough. Use `install --clean`.
+- [ ] Test disk reuse — qcow2 not overwritten on re-install. Use `install --clean`.
 
 ### Installer
 - [ ] Limited error handling — no recovery or rollback path.
 - [ ] BIOS bootloader install broken (quoted heredoc + missing `limine-install`).
-- [ ] BIOS live boot via syslinux untested.
 
 ### Other
 - [ ] NVIDIA GPU auto-detection pacman hook target incorrect.
@@ -174,56 +185,40 @@ Project status: PRE-ALPHA → ALPHA (core architecture complete, not feature-com
 
 ---
 
-## Current Phase: Alpha — Boot Debugging
+## Current Phase: Alpha Stabilization
 
-### Priority 1 — Fix Black-Screen Boot
+### Priority 1 — Complete System Validation
+- [ ] Fix login banner: update `/etc/os-release` PRETTY_NAME
+- [ ] Verify NetworkManager connects (DHCP in QEMU user NAT)
+- [ ] Verify PipeWire audio functional (`pw-play` test)
+- [ ] Verify yay AUR helper available and installs a package
+- [ ] Verify first-boot.service runs end-to-end:
+  - [ ] Phase 2 — Snapper create-config (root + home)
+  - [ ] Aero custom snapper config templates applied
+  - [ ] Phase 3 — AUR packages from `aur.packages` via yay
+  - [ ] Phase 4 — Initial snapper snapshots
+  - [ ] Phase 5 — XDG user directories
+  - [ ] Phase 6 — Hardware detection
+  - [ ] Phase 7 — Branding (wallpaper, theme)
+  - [ ] Phase 8 — Service self-disable, `/etc/aero-firstboot-complete` created
+- [ ] Verify snapper-boot.service enabled
+- [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`) boots correctly
+- [ ] Reboot idempotency (first-boot does NOT run again)
+- [ ] Investigate empty home directory (XDG user dirs)
 
-- [ ] Add verbose kernel logging (remove `quiet`, add `debug` to cmdline in limine.conf)
-- [ ] Rebuild ISO with verbose cmdline
-- [ ] Re-install and test boot
-- [ ] Verify root partition UUID in limine.conf matches blkid on installed system
-- [ ] Test fallback initramfs entry
-- [ ] Debug with early console output
-- [ ] Verify initramfs contains btrfs module
-- [ ] Test snapshot entry
+### Priority 2 — Begin Vim Motion Philosophy Implementation
+- [ ] Design home-row navigation scheme for Hyprland (Super + hjkl / vim-style)
+- [ ] Document unified keybinding philosophy
+- [ ] Implement consistent keybindings across Hyprland, Waybar, Ghostty, walker
+- [ ] Keyboard-first workflow documentation
 
-### Priority 2 — First-Boot Service
-- [ ] Snapper configuration (runs on first boot via first-boot.sh Phase 2):
-  - [ ] `snapper -c root create-config /` succeeds
-  - [ ] Custom aero snapper config templates applied
-  - [ ] `snapper -c home create-config /home` succeeds
-  - [ ] `snapper-boot.service` enabled
-- [ ] AUR packages install via yay (Phase 3)
-- [ ] Initial snapper snapshots created (Phase 4)
-- [ ] XDG user directories created (Phase 5)
-- [ ] Hardware detection runs (Phase 6)
-- [ ] Branding applied (Phase 7)
-- [ ] Service disables itself, `/etc/aero-firstboot-complete` created (Phase 8)
+### Priority 3 — Home-Row-First Desktop Experience
+- [ ] Vim-style navigation across entire OS
+- [ ] Consistent keybinding philosophy documented
+- [ ] Reduce mouse dependency wherever possible
+- [ ] Modal workflow design for desktop interaction
 
-### Priority 3 — Desktop Validation
-- [ ] Hyprland launches after first-boot completes
-- [ ] Waybar visible
-- [ ] Ghostty terminal works
-- [ ] NetworkManager connects (DHCP)
-- [ ] PipeWire audio functional
-- [ ] yay command available and works
-- [ ] Snapper snapshots can be created manually
-- [ ] `snapper list` shows root and home configs
-
-### Priority 4 — Snapshot Boot Workflow
-- [ ] Reboot first-boot does NOT run again
-- [ ] Reboot snapper-boot creates boot-time snapshots
-- [ ] Snapshot boot entry (`/Aero Linux (snapshot)`) boots correctly
-- [ ] Snapshot rollback workflow tested
-
-### Priority 5 — Vim Philosophy Integration
-- [ ] Home-row navigation everywhere
-- [ ] Unified keybindings across Hyprland, Waybar, Ghostty, walker
-- [ ] Keyboard-first workflows
-- [ ] System-wide motion consistency
-- [ ] Mouse-optional design
-
-### Priority 6 — Polish
+### Priority 4 — Polish & Bug Fixes
 - [ ] Installer error handling and recovery
 - [ ] BIOS bootloader fix
 - [ ] NVIDIA pacman hook fix
@@ -232,6 +227,7 @@ Project status: PRE-ALPHA → ALPHA (core architecture complete, not feature-com
 - [ ] Firewall pre-configuration
 - [ ] Kernel selection in installer
 - [ ] LUKS encryption support
+- [ ] ISO size reduction
 - [ ] Automated ISO release pipeline
 
 ---
@@ -251,5 +247,5 @@ Project status: PRE-ALPHA → ALPHA (core architecture complete, not feature-com
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Version 0.1.0-alpha** — "Aero Alpha". Core architecture complete. Current phase: black-screen boot debugging.
+- **Version 0.1.1-alpha** — "Aero Alpha". First successful desktop boot. Alpha stabilization phase.
 - Philosophy: Vim Motion Philosophy Distribution — keyboard-first, home-row-centric, mouse-optional.

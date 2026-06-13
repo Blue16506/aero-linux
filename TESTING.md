@@ -1,10 +1,11 @@
 # Aero Linux — Manual Installation Test
 
-**Version 0.1.0-alpha** — "Aero Alpha"
+**Version 0.1.1-alpha** — "Aero Alpha"
 
-> **Checkpoint: Alpha — Core Architecture Complete (2026-06-13)**
-> Installer completes, Limine boots with correct menu entries. Current blocker: black screen after selecting default boot entry.
-> Tests 1–2 pre-checked. Test 3 is current focus. Test 4 deferred until beta.
+> **Checkpoint: ALPHA — First Successful Desktop Boot (2026-06-14)**
+> System installs, boots via Limine, launches Hyprland desktop. Wallpaper migrated to hyprpaper.
+> Test 1 ✅ verified. Test 2 ✅ verified. Test 3 ✅ verified (desktop boots). Test 4 deferred until Beta.
+> Focus now: Alpha stabilization, system validation, Vim Motion Philosophy integration.
 
 ## Prerequisites
 
@@ -15,6 +16,8 @@ sudo pacman -S qemu-desktop edk2-ovmf
 # Build the ISO
 sudo bash build.sh
 ```
+
+> **Note:** `test.sh` now auto-discovers the newest ISO in `out/` — daily date changes no longer require script edits. The testing workflow is resilient to version and date changes.
 
 ---
 
@@ -49,6 +52,13 @@ bash test.sh live-bios
 **Status: VERIFIED (2026-06-13)** — Section updated to reflect current state.
 
 **Step 1 — Create test disk and boot installer:**
+
+For a **fresh install** (recommended for installer, partitioning, or bootloader changes):
+```bash
+bash test.sh install --clean
+```
+
+For a **fast re-install** (reuses existing qcow2 — desktop, service, or theme changes only):
 ```bash
 bash test.sh install
 ```
@@ -100,6 +110,8 @@ Creates a 20G qcow2 disk and boots the ISO with it.
 
 ## Test 3 — Boot Installed System
 
+**Status: VERIFIED (2026-06-14)** — System boots successfully to Hyprland desktop.
+
 **QEMU Command:**
 ```bash
 bash test.sh boot
@@ -112,26 +124,12 @@ bash test.sh boot
 bash test.sh boot
 ```
 
-**Step 2 — If black screen occurs:**
-
-The Limine menu appears but selecting `/Aero Linux` results in a black screen. To debug:
-
-1. First verify the Limine menu shows entries: `/Aero Linux`, `/Aero Linux (fallback)`, `/Aero Linux (snapshot)`. If not, check `limine.conf` syntax on the ESP.
-2. Modify `limine.conf` cmdline to add `debug` and remove `quiet loglevel=3`:
-   - The config is at `/boot/EFI/BOOT/limine.conf` inside the installed system
-   - To modify before boot: mount the qcow2 with `guestmount` on the host, or rebuild the ISO with the change
-3. Rebuild ISO: `sudo bash build.sh`
-4. Re-install: `bash test.sh install` (delete old disk first: `rm -f /tmp/aero-test-disk.qcow2`)
-5. Re-boot: `bash test.sh boot`
-6. Observe kernel output — look for root device errors, panic messages, or module loading failures
-7. Test the fallback entry from the Limine menu
-
 **Expected outcomes:**
-- [ ] Limine bootloader menu appears in QEMU window
-- [ ] *KNOWN ISSUE: Default entry produces black screen. Debugging in progress.*
-- [ ] ~~Default entry boots the installed kernel + initramfs~~ (blocked)
-- [ ] ~~System reaches greetd/tuigreet login screen~~ (blocked)
-- [ ] `aero-firstboot.service` runs on first boot:
+- [x] Limine bootloader menu appears with `/Aero Linux` entry
+- [x] Default entry boots the installed kernel + initramfs
+- [x] Root filesystem mounts (Btrfs `@` subvolume)
+- [x] System reaches greetd/tuigreet login screen
+- [x] `aero-firstboot.service` runs on first boot:
   - [ ] Phase 2 — Snapper configuration:
     - [ ] `snapper -c root create-config /` succeeds
     - [ ] Aero snapper config template applied to root
@@ -142,16 +140,16 @@ The Limine menu appears but selecting `/Aero Linux` results in a black screen. T
   - [ ] Phase 4 — Initial snapper snapshots created
   - [ ] Phase 5 — XDG user directories created
   - [ ] Phase 6 — Hardware detection runs
-  - [ ] Phase 7 — Branding applied
+  - [ ] Phase 7 — Branding applied (wallpaper, theme)
   - [ ] Phase 8 — Service disables itself, `/etc/aero-firstboot-complete` created
-- [ ] Hyprland desktop reaches graphical session
-- [ ] Waybar visible at top of screen
-- [ ] Ghostty terminal available (`Super + Enter`)
-- [ ] NetworkManager connected (DHCP via QEMU user NAT)
-- [ ] `snapper list` shows root and home configs
-- [ ] Snapper snapshots exist (`snapper -c root list`)
-- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run)
-- [ ] Reboot and re-test: first-boot does NOT run again
+- [x] Hyprland desktop reaches graphical session
+- [x] Waybar visible at top of screen
+- [x] Ghostty terminal available (`Super + Enter`)
+- [ ] NetworkManager connected (DHCP via QEMU user NAT) — pending validation
+- [ ] `snapper list` shows root and home configs — pending validation
+- [ ] Snapper snapshots exist (`snapper -c root list`) — pending validation
+- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run) — pending validation
+- [ ] Reboot and re-test: first-boot does NOT run again — pending validation
 
 ---
 
@@ -215,31 +213,34 @@ After a successful boot of the installed system, check:
 
 ## Appendix: Known Bugs (Alpha)
 
-### Boot Black Screen (Priority 1)
-- Limine menu appears, default entry selected, but system does not reach greetd
-- Likely causes: missing root device, initramfs issue, or kernel panic
-- **Debug steps:**
-  1. Remove `quiet loglevel=3` from limine.conf cmdline, add `debug`
-  2. Rebuild ISO, reinstall
-  3. Observe kernel output on boot
-  4. Test fallback entry
-  5. Verify root=UUID matches blkid
-  6. Check initramfs for btrfs: `lsinitramfs /boot/initramfs-linux.img | grep btrfs`
+### Desktop & Login
+- **Login banner shows `Linux` instead of `Aero Linux`**: `/etc/os-release` PRETTY_NAME needs update.
+- **Empty home directory**: XDG user directories may not be created on fresh install.
+- **Desktop wallpaper intentionally black until first-boot**: hyprpaper migration complete. Wallpaper set by `aero-theme apply catppuccin` during first-boot Phase 7.
 
 ### OVMF Variable Persistence
 - `/tmp/OVMF_VARS.4m.fd` retains UEFI boot state across QEMU sessions
 - Stale variables can cause PXE fallthrough even with valid bootloader
-- **Fix:** `rm -f /tmp/OVMF_VARS.4m.fd` before every `bash test.sh boot`
+- **Fix:** `bash test.sh install --clean` (deletes it automatically) or `rm -f /tmp/OVMF_VARS.4m.fd`
 
 ### Test Disk Reuse
-- `/tmp/aero-test-disk.qcow2` is NOT overwritten on re-install
-- Old install persists, hiding installer changes
-- **Fix:** `rm -f /tmp/aero-test-disk.qcow2` before `bash test.sh install`
+- `/tmp/aero-test-disk.qcow2` is NOT overwritten on re-install — old install data persists
+- **Fix:** `bash test.sh install --clean` (deletes it automatically) or `rm -f /tmp/aero-test-disk.qcow2`
+- For iterative desktop testing, reuse is *intentional* — preserves VM state for faster iteration
 
 ### Snapper arch-chroot Failure
 - `snapper -c root create-config /` fails in chroot with `IO Error`
 - Root cause unknown — Btrfs subvolumes and snapshots directory are valid
 - **Workaround:** already implemented — runs on first boot via `aero-firstboot.service`
+- `snapper-boot.service` lacks `[Install]` section — never enabled by any script
+
+### Service Validation (Pending)
+- NetworkManager DHCP connectivity in QEMU user NAT
+- PipeWire audio output
+- yay AUR helper package installation
+- first-boot.service end-to-end (all 8 phases)
+- Snapshot boot entry (`/Aero Linux (snapshot)`)
+- Reboot idempotency
 
 ### Other Known Issues
 - BIOS bootloader install broken (UEFI-only for now)

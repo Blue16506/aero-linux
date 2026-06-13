@@ -5,8 +5,15 @@ set -euo pipefail
 # Tests the ISO in a virtual machine
 
 AERO_DIR="$(cd "$(dirname "$0")" && pwd)"
-ISO="$AERO_DIR/out/aero-linux-$(date +%Y.%m.%d)-x86_64.iso"
+
+# Auto-discover newest ISO — resilient to date/version changes
+ISO="$(ls -t "$AERO_DIR"/out/*.iso 2>/dev/null | head -n1)"
+if [[ -z "$ISO" ]]; then
+    echo "[ERROR] No ISO found in out/. Run build.sh first."
+    exit 1
+fi
 TEST_DISK="/tmp/aero-test-disk.qcow2"
+OVMF_VARS="/tmp/OVMF_VARS.4m.fd"
 MEM="4G"
 CPUS="2"
 
@@ -23,15 +30,16 @@ error() { printf "${RED}[ERROR]${NC} %s\n" "$*"; exit 1; }
 
 usage() {
     cat <<EOF
-Usage: $0 <mode>
+Usage: $0 <mode> [options]
 
 Modes:
-  live        Boot ISO in UEFI mode (test live environment)
-  live-bios   Boot ISO in BIOS mode
-  install     Boot ISO with a test disk for installation
-  boot        Boot the installed test disk
-  cleanup     Remove the test disk
-  help        Show this help
+  live              Boot ISO in UEFI mode (test live environment)
+  live-bios         Boot ISO in BIOS mode
+  install           Install using existing test disk if present
+  install --clean   Delete qcow2 and OVMF variables, then do a fresh install
+  boot              Boot the installed test disk
+  cleanup           Remove the test disk
+  help              Show this help
 EOF
     exit 0
 }
@@ -39,11 +47,10 @@ EOF
 check_deps() {
     command -v qemu-system-x86_64 >/dev/null 2>&1 || error "qemu-system-x86_64 not found. Install: sudo pacman -S qemu-desktop"
     OVMF_CODE="/usr/share/edk2/x64/OVMF_CODE.4m.fd"
-    OVMF_VARS="/tmp/OVMF_VARS.4m.fd"
     [[ -f "$OVMF_CODE" ]] || error "UEFI firmware not found. Install: sudo pacman -S edk2-ovmf"
     [[ -f "$OVMF_VARS" ]] || cp "/usr/share/edk2/x64/OVMF_VARS.4m.fd" "$OVMF_VARS"
     UEFI_ARGS="-drive if=pflash,format=raw,readonly=on,file=$OVMF_CODE -drive if=pflash,format=raw,file=$OVMF_VARS"
-    [[ -f "$ISO" ]] || error "ISO not found at $ISO. Run build.sh first."
+    [[ -f "$ISO" ]] || error "ISO not found at $ISO. Was it deleted?"
 }
 
 [[ $# -lt 1 ]] && usage
@@ -68,12 +75,25 @@ case "$MODE" in
         ;;
 
     install)
+        CLEAN="${2:-}"
+        if [[ "$CLEAN" == "--clean" ]]; then
+            info "Clean test requested."
+            rm -f "$TEST_DISK" "$OVMF_VARS"
+            info "Removed test disk and OVMF variables."
+        elif [[ -n "$CLEAN" ]]; then
+            error "Unknown option: $CLEAN. Use 'install --clean' for a fresh install."
+        fi
         check_deps
         if [[ ! -f "$TEST_DISK" ]]; then
             info "Creating test disk at $TEST_DISK (20G)..."
             qemu-img create -f qcow2 "$TEST_DISK" 20G
         else
-            warn "Test disk already exists at $TEST_DISK"
+            warn "Existing test disk found:"
+            warn "  $TEST_DISK"
+            warn ""
+            warn "Tip:"
+            warn "  bash test.sh install --clean"
+            warn "      Start from a completely fresh installation."
         fi
         info "Booting ISO with test disk for installation..."
         qemu-system-x86_64 -enable-kvm -m "$MEM" -smp "$CPUS" -cpu host \

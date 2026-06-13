@@ -157,6 +157,14 @@ if [[ -f "$AERO_WALLPAPER" ]]; then
     chown -h "$USERNAME":"$USERNAME" "$USER_HOME/.config/aero/wallpaper" 2>/dev/null || true
 fi
 
+# Deploy hyprpaper config
+AERO_HYPRPAPER_CONF="/usr/share/aero/configs/hypr/hyprpaper.conf"
+if [[ -f "$AERO_HYPRPAPER_CONF" ]]; then
+    mkdir -p "$USER_HOME/.config/hypr"
+    cp "$AERO_HYPRPAPER_CONF" "$USER_HOME/.config/hypr/hyprpaper.conf" 2>/dev/null || true
+    chown "$USERNAME":"$USERNAME" "$USER_HOME/.config/hypr/hyprpaper.conf" 2>/dev/null || true
+fi
+
 # Apply default theme if available
 # Use -H to ensure $HOME is set to the user's home (not root's)
 if [[ -x /usr/local/bin/aero-theme ]]; then

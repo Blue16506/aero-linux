@@ -118,16 +118,17 @@ apply_theme() {
         info "  Starship: applied"
     fi
 
-    # Wallpaper
+    # Wallpaper (hyprpaper must be running — started via hyprland autostart)
     if [[ -f "$theme_dir/wallpaper.jpg" ]]; then
         local aero_dir="$config_dir/aero"
         mkdir -p "$aero_dir"
         cp "$theme_dir/wallpaper.jpg" "$aero_dir/wallpaper"
+        if command -v hyprctl &>/dev/null; then
+            hyprctl hyprpaper preload "$aero_dir/wallpaper" &>/dev/null || true
+            hyprctl hyprpaper wallpaper ",$aero_dir/wallpaper" &>/dev/null || true
+        fi
         if command -v swaybg &>/dev/null; then
             swaybg -i "$aero_dir/wallpaper" -m fill &>/dev/null &
-        fi
-        if command -v hyprctl &>/dev/null; then
-            hyprctl hyprpaper wallpaper ",$aero_dir/wallpaper" 2>/dev/null || true
         fi
         info "  Wallpaper: applied"
     fi

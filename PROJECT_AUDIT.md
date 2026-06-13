@@ -1,9 +1,9 @@
 # Aero Linux — Project Audit
 
-**Date:** 2026-06-12
-**Commit:** 329c4a8 (pre-alpha 2) + uncommitted changes
-**ISO:** `out/aero-linux-2026.06.12-x86_64.iso` (1.8 GB)
-**Status:** Pre-alpha — bootable, live session verified, installer functional
+**Date:** 2026-06-14
+**Commit:** 329c4a8 + uncommitted changes
+**ISO:** `out/aero-linux-<version>-x86_64.iso` (~1.8 GB)
+**Status:** Alpha — boots, installs, reaches Hyprland desktop
 
 ---
 
@@ -13,12 +13,15 @@
 |------|--------|
 | ISO builds | ✅ Verified — `mkarchiso` completes without errors |
 | UEFI boot | ✅ Verified — systemd-boot menu, kernel loads, live environment reaches greetd |
-| BIOS boot | ✅ Untested but configuration identical in structure |
+| BIOS boot | ❌ Untested — known broken in installed system |
 | Live session login | ✅ Verified — greetd + tuigreet shows `liveuser`, login succeeds |
 | Hyprland launch | ✅ Verified — compositor starts with Waybar, wallpaper |
 | Installer launch | ✅ Verified — `aero-install` runs, TUI prompts work |
 | Full installation | ✅ Verified — partitioning, pacstrap, chroot, Limine install all complete |
-| Installed system boot | ✅ Verified — Limine boots, greetd appears |
+| Installed system boot | ✅ Verified — Limine boots, greetd appears, Hyprland desktop renders |
+| Wallpaper display | ✅ Fixed — migrated from swaybg to hyprpaper |
+| test.sh ISO discovery | ✅ Auto-discovers newest ISO — no date hardcode |
+| test.sh --clean flag | ✅ `install --clean` deletes qcow2 + OVMF_VARS for fresh installs |
 | Python dependency | ✅ None — zero Python files in repo |
 | Bash-first philosophy | ✅ All scripts use `#!/bin/bash` |
 
@@ -205,13 +208,16 @@ ConditionPathExists=!/etc/aero-firstboot-complete  # Created by first-boot.sh
 
 ## 11. Recommended Next Steps
 
-### Immediate (before release)
+### Immediate (Alpha Stabilization)
 
-1. **Remove `archinstall` from `packages.x86_64`** — unused, saves ~5-10 MB
-2. **Remove `btop` and `lazygit` from `desktop.packages`** — redundant
-3. **Fix `test.sh` line 44** — use proper OVMF_VARS template
-4. **Fix `snapper-boot.service`** — add `[Install]` section or remove if intentional
-5. **Add regression** — verify display boots before closing this milestone
+1. **Fix login banner** — update `/etc/os-release` PRETTY_NAME from `Linux` to `Aero Linux`
+2. **Verify first-boot.service end-to-end** — Snapper, AUR packages, snapshots, self-disable
+3. **Verify system services** — NetworkManager, PipeWire, yay, snapper-boot
+4. **Verify snapshot boot entry** — test `/Aero Linux (snapshot)` boots correctly
+5. **Investigate empty home directory** — XDG user dirs creation
+6. **Remove `archinstall` from `packages.x86_64`** — unused, saves ~5-10 MB
+7. **Remove `btop` and `lazygit` from `desktop.packages`** — redundant
+8. **Fix `snapper-boot.service`** — add `[Install]` section or remove if intentional
 
 ### Short-term
 
