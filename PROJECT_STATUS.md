@@ -1,6 +1,14 @@
 # Aero Linux — Project Status
 
-Last updated: 2026-06-13
+**Version 0.1.0-alpha** — "Aero Alpha"
+
+Last updated: 2026-06-13 (Alpha milestone)
+
+Project status: **PRE-ALPHA → ALPHA**
+
+Reason: Core architecture is complete. Installer finishes, Limine boots, system installs. Not feature-complete but past proof-of-concept.
+
+Versioning: `Major.Minor.Patch` (e.g., `0.1.0-alpha`, `0.2.0-alpha`, `1.0.0`). All pre-1.0 versions carry the `-alpha` suffix.
 
 ---
 
@@ -49,14 +57,20 @@ Last updated: 2026-06-13
 
 ## In Progress
 
-### First Boot Validation
+### Current Blocker — Black Screen After Limine Menu
+- Limine menu displays correctly
+- Default `/Aero Linux` entry selected
+- Kernel/initramfs loaded? Unclear — no verbose output
+- System does not reach greetd login
+- **Next**: add `debug` to cmdline, remove `quiet`, verify root UUID, test fallback entry
+
+### First Boot Validation (blocked by boot issue)
 - [ ] Rebuild ISO (`sudo bash build.sh`)
 - [ ] Delete old artifacts: `rm -f /tmp/aero-test-disk.qcow2 /tmp/OVMF_VARS.4m.fd`
 - [ ] Install: `bash test.sh install`
 - [ ] Boot installed system: `bash test.sh boot`
-- [ ] Limine menu appears with `/Aero Linux` entry
-- [ ] System boots and reaches greetd login
-- [ ] Login with created user
+- [ ] Debug kernel boot (add verbose logging, verify UUID, test fallback)
+- [ ] System reaches greetd login
 - [ ] aero-firstboot.service runs:
   - [ ] Snapper create-config for root and home
   - [ ] AUR packages installed via yay
@@ -75,52 +89,121 @@ Last updated: 2026-06-13
 
 ---
 
-## Blocked
+## Known Bugs (Alpha)
 
-(None — boot architecture fix unblocks installed system boot testing)
+### Boot Issues
+- **Black screen after Limine menu**: default entry loads but system does not reach greetd. Cause unknown — may be kernel panic, missing root device, or initramfs issue. Need verbose logging (`debug` in cmdline, remove `quiet`).
+- **Fallback entry untested**: `/Aero Linux (fallback)` — may have same or different failure mode.
+- **No verbose output**: cmdline includes `quiet loglevel=3` which suppresses all kernel messages.
+- **OVMF_VARS persistence**: stale `/tmp/OVMF_VARS.4m.fd` causes PXE fallthrough. Must delete before each boot test.
 
----
+### Snapper
+- `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`. Root cause unknown. Diagnostics prove `/` and `/.snapshots` are valid Btrfs subvolumes. strace shows no failing Btrfs ioctls. Workaround: Snapper initialized on first boot via `aero-firstboot.service`.
 
-## Known Issues
+### Installer
+- Limited error handling — no recovery or rollback path.
+- BIOS bootloader install broken (quoted heredoc + missing `limine-install` binary in chroot).
+- `set -euo pipefail` combined with EXIT trap can unmount `/mnt` on any error.
+- BIOS live boot via syslinux untested.
 
-| Issue | Impact | Status |
-|---|---|---|---|
-| Snapper create-config fails in arch-chroot | Snapper not configured during install | Workaround: first-boot init |
-| BIOS bootloader install broken (quoted heredoc + missing `limine-install`) | BIOS installation unsupported | Unfixed |
-| BIOS live boot via syslinux untested | BIOS path unvalidated | Unfixed |
-| NVIDIA hook target incorrect | NVIDIA systems need manual fix | Unfixed |
-| `btop`/`lazygit` duplicated in packages | Cosmetic | Unfixed |
-| `protocol: reboot`/`poweroff` not in Limine v12 | Reboot/poweroff entries removed | Fixed by removal |
-
----
-
-## Next Milestone
-
-**First successful boot into installed Aero system**
-- Limine menu appears and `/Aero Linux` entry boots
-- System reaches greetd login with created user
-- First-boot service runs, Snapper initializes
-- Hyprland desktop starts
-- Network, audio, theming functional
-- Reboot idempotency verified
-
-After: beta preparation (BIOS boot fix, known issue cleanup, release pipeline).
+### Other
+- NVIDIA GPU auto-detection pacman hook target incorrect.
+- `btop`/`lazygit` duplicated in packages (cosmetic).
+- `protocol: reboot` and `protocol: poweroff` removed (not supported in Limine v12).
 
 ---
 
-## Updates
+## Alpha Roadmap
 
-### 2026-06-13 — Limine v12 Config Syntax Fix
+### Priority 1 — Fix Black-Screen Boot
+- [ ] Add verbose kernel logging (remove `quiet`, add `debug` to cmdline)
+- [ ] Verify root partition UUID in limine.conf matches blkid
+- [ ] Test fallback initramfs entry
+- [ ] Debug with early console output
+- [ ] Verify initramfs contains btrfs module
+- [ ] Test snapshot entry
 
-**Problem:** Limine 12.3.0 displayed "config file contains no valid entries" after boot architecture fix. The `entry "Title"` syntax is from GRUB/systemd-boot — Limine v12 requires `/Title` at line start.
+### Priority 2 — First-Boot Service
+- [ ] Snapper create-config for root and home
+- [ ] AUR packages via yay
+- [ ] Initial snapper snapshots
+- [ ] Hardware detection
+- [ ] Branding
+- [ ] Service self-disable and idempotency
 
-**Root cause** (from `common/lib/config.c`):
-- `config_get_entry_name()` scans for `/` characters to find menu entries
-- The `/` must be at the start of a line (preceded by `\n` or at EOF)
-- `entry "Aero Linux"` contains no `/` at all — scanner skips past
-- The only `/` characters are inside `boot():/vmlinuz-linux` — rejected by the `if *(p-2) != '\n'` line-start guard
-- Result: zero entries found
+### Priority 3 — Desktop & Snapshot Workflow
+- [ ] Hyprland launches after first-boot
+- [ ] Waybar, Ghostty, NetworkManager, PipeWire
+- [ ] Snapper snapshot creation and rollback
+- [ ] Snapshot boot entry verification
 
-**Fix:** `entry "Aero Linux"` → `/Aero Linux`. Also removed `protocol: reboot` and `protocol: poweroff` entries (not in Limine v12 protocol list).
+### Priority 4 — Vim Philosophy Integration
+- [ ] Home-row navigation everywhere
+- [ ] Unified keybindings (Hyprland, Waybar, Ghostty, walker)
+- [ ] Keyboard-first workflows
+- [ ] System-wide motion consistency
 
-### 2026-06-13 — Boot Architecture Fix
+---
+
+## Philosophy
+
+**Aero Linux is a Vim Motion Philosophy Distribution.**
+
+### Goals
+- Hands remain on the home row
+- Entire operating system keyboard-first
+- Hyprland workflow optimized for Vim motions
+- Mouse optional, not required
+- Consistent keybindings across all interfaces
+- Every workflow composable and scriptable
+
+### Design Principles
+1. Home-row-first interaction
+2. Keyboard-first by default
+3. Minimal friction
+4. Speed through muscle memory
+5. Discoverable but powerful
+6. Consistency over novelty
+7. Unix philosophy and composability
+
+---
+
+## START HERE (For New Development Sessions)
+
+### Current State
+- **Version**: 0.1.0-alpha ("Aero Alpha")
+- **Status**: Alpha — core architecture complete
+- **Current Blocker**: Black screen after Limine menu
+
+### Build & Test Commands
+```bash
+# Build ISO
+sudo bash build.sh
+
+# Clean test state
+rm -f /tmp/aero-test-disk.qcow2 /tmp/OVMF_VARS.4m.fd
+
+# Install (interactive TUI inside QEMU)
+bash test.sh install
+
+# Boot installed system
+bash test.sh boot
+
+# Cleanup only
+bash test.sh cleanup
+```
+
+### Debugging the Black Screen
+1. Modify limine.conf cmdline: remove `quiet loglevel=3`, add `debug systemd.log_level=debug`
+2. Rebuild ISO with `sudo bash build.sh`, reinstall
+3. If no output: try fallback initramfs entry
+4. Check root=UUID matches actual partition
+5. Verify initramfs includes btrfs: `lsinitramfs /boot/initramfs-linux.img | grep btrfs`
+
+### Key Architecture Decisions
+- ESP mounted at `/boot` (FAT32, kernel/initramfs on FAT for Limine compatibility)
+- Limine v12 config uses `/Title` syntax (not `entry "Title"`)
+- Kernel paths use `boot():/vmlinuz-linux` prefix
+- Snapper initialization deferred to first-boot service
+- All scripts are pure Bash — zero Python dependencies
+- TUI rendering goes to `/dev/tty`, return values to stdout, logs to stderr

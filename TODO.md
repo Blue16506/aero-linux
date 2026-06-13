@@ -1,7 +1,33 @@
 # Aero Linux — TODO
 
-## Completed
+**Version 0.1.0-alpha** — "Aero Alpha"
 
+Project status: PRE-ALPHA → ALPHA (core architecture complete, not feature-complete)
+
+---
+
+## Philosophy
+
+**Aero Linux is a Vim Motion Philosophy Distribution.**
+
+### Goals
+- Hands remain on the home row
+- Entire operating system keyboard-first
+- Hyprland workflow optimized for Vim motions
+- Mouse optional, not required
+- Consistent keybindings across all interfaces
+- Every workflow composable and scriptable
+
+### Design Principles
+1. Home-row-first interaction
+2. Keyboard-first by default
+3. Minimal friction
+4. Speed through muscle memory
+5. Discoverable but powerful
+6. Consistency over novelty
+7. Unix philosophy and composability
+
+---
 ### Core Infrastructure
 - [x] Create archiso profile directory structure
 - [x] Create `packages.x86_64` with Hyprland, Ghostty, greetd, zsh, etc.
@@ -126,30 +152,53 @@
 
 ---
 
-## Current Phase: First Boot Validation
+## Known Bugs (Alpha)
 
-### Priority 1 — First Boot Validation
+### Boot Issues
+- [ ] **Black screen after Limine menu** — default entry loads but no output reaches greetd. High priority.
+- [ ] **Fallback entry untested** — may have same or different failure mode.
+- [ ] **No verbose kernel output** — cmdline includes `quiet loglevel=3`. Remove for diagnosis.
+- [ ] **OVMF_VARS persistence** — stale `/tmp/OVMF_VARS.4m.fd` causes PXE fallthrough. Must delete before each boot test.
 
-- [ ] Rebuild ISO (`sudo bash build.sh`)
-- [ ] Delete old test artifacts: `rm -f /tmp/aero-test-disk.qcow2 /tmp/OVMF_VARS.4m.fd`
-- [ ] Install: `bash test.sh install`
-- [ ] Boot installed system: `bash test.sh boot`
-- [ ] Limine menu appears and boots default entry (`/Aero Linux` — `boot():/vmlinuz-linux`)
-- [ ] System reaches greetd/tuigreet login screen
-- [ ] Login with created user succeeds
+### Snapper
+- [ ] `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`. Root cause unknown. Workaround: first-boot init.
+
+### Installer
+- [ ] Limited error handling — no recovery or rollback path.
+- [ ] BIOS bootloader install broken (quoted heredoc + missing `limine-install`).
+- [ ] BIOS live boot via syslinux untested.
+
+### Other
+- [ ] NVIDIA GPU auto-detection pacman hook target incorrect.
+- [ ] `btop`/`lazygit` duplicated in packages (cosmetic).
+
+---
+
+## Current Phase: Alpha — Boot Debugging
+
+### Priority 1 — Fix Black-Screen Boot
+
+- [ ] Add verbose kernel logging (remove `quiet`, add `debug` to cmdline in limine.conf)
+- [ ] Rebuild ISO with verbose cmdline
+- [ ] Re-install and test boot
+- [ ] Verify root partition UUID in limine.conf matches blkid on installed system
+- [ ] Test fallback initramfs entry
+- [ ] Debug with early console output
+- [ ] Verify initramfs contains btrfs module
+- [ ] Test snapshot entry
 
 ### Priority 2 — First-Boot Service
-- [ ] Snapper configuration:
-  - [ ] `snapper -c root create-config /` succeeds on first boot
-  - [ ] `snapper -c home create-config /home` succeeds on first boot
-  - [ ] Aero snapper config templates applied
+- [ ] Snapper configuration (runs on first boot via first-boot.sh Phase 2):
+  - [ ] `snapper -c root create-config /` succeeds
+  - [ ] Custom aero snapper config templates applied
+  - [ ] `snapper -c home create-config /home` succeeds
   - [ ] `snapper-boot.service` enabled
-- [ ] AUR packages install via yay (network permitting)
-- [ ] Initial snapper snapshots created
-- [ ] Hardware detection runs
-- [ ] Branding applied (wallpaper, theme)
-- [ ] First-boot service disables itself
-- [ ] `/etc/aero-firstboot-complete` marker created
+- [ ] AUR packages install via yay (Phase 3)
+- [ ] Initial snapper snapshots created (Phase 4)
+- [ ] XDG user directories created (Phase 5)
+- [ ] Hardware detection runs (Phase 6)
+- [ ] Branding applied (Phase 7)
+- [ ] Service disables itself, `/etc/aero-firstboot-complete` created (Phase 8)
 
 ### Priority 3 — Desktop Validation
 - [ ] Hyprland launches after first-boot completes
@@ -158,35 +207,32 @@
 - [ ] NetworkManager connects (DHCP)
 - [ ] PipeWire audio functional
 - [ ] yay command available and works
-- [ ] pamac/custom package install works
 - [ ] Snapper snapshots can be created manually
 - [ ] `snapper list` shows root and home configs
 
-### Priority 4 — Idempotency
+### Priority 4 — Snapshot Boot Workflow
 - [ ] Reboot first-boot does NOT run again
 - [ ] Reboot snapper-boot creates boot-time snapshots
-- [ ] Reboot Hyprland desktop still functional
+- [ ] Snapshot boot entry (`/Aero Linux (snapshot)`) boots correctly
+- [ ] Snapshot rollback workflow tested
 
----
+### Priority 5 — Vim Philosophy Integration
+- [ ] Home-row navigation everywhere
+- [ ] Unified keybindings across Hyprland, Waybar, Ghostty, walker
+- [ ] Keyboard-first workflows
+- [ ] System-wide motion consistency
+- [ ] Mouse-optional design
 
-## Future
-
-- [ ] **Hyprland Lua migration** — migrate remaining configs from hyprlang to Lua API (`hl.*`). `windowrules.conf` already converted to modern hyprlang; full Lua migration postponed until after install validation.
+### Priority 6 — Polish
+- [ ] Installer error handling and recovery
+- [ ] BIOS bootloader fix
+- [ ] NVIDIA pacman hook fix
+- [ ] `btop`/`lazygit` duplication cleanup
 - [ ] Bluetooth auto-configuration
-- [ ] NetworkManager iwd backend integration
-- [ ] Firewall (ufw) pre-configuration
-- [ ] `aero-update` script with pre/post snapper snapshots
-- [ ] Kernel selection (linux-zen, linux-lts) in installer
-- [ ] Plymouth boot splash with branding
-- [ ] LUKS encryption support in installer
-- [ ] NVIDIA GPU auto-detection and driver installation
-- [ ] Printer support
-- [ ] Virtual machine guest tools
-- [ ] Package group selection in installer
+- [ ] Firewall pre-configuration
+- [ ] Kernel selection in installer
+- [ ] LUKS encryption support
 - [ ] Automated ISO release pipeline
-- [ ] Repository signing
-- [ ] Custom wallpapers pack
-- [ ] Aero-specific pacman repository
 
 ---
 
@@ -205,4 +251,5 @@
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Boot Architecture Fix applied 2026-06-13:** ESP mounted at `/boot`, `limine-install --efi` replaced with `cp BOOTX64.EFI`, kernel paths use `boot():/` prefix. Next phase: first-boot validation on installed system.
+- **Version 0.1.0-alpha** — "Aero Alpha". Core architecture complete. Current phase: black-screen boot debugging.
+- Philosophy: Vim Motion Philosophy Distribution — keyboard-first, home-row-centric, mouse-optional.

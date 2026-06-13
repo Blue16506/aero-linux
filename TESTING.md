@@ -1,8 +1,10 @@
 # Aero Linux — Manual Installation Test
 
-> **Checkpoint: Limine Config Syntax Fix — `/Title` entries (2026-06-13)**
-> Limine v12.3.0 now sees valid menu entries (BOOTX64.EFI, ESP layout, and OVMF_VARS all verified working).
-> The only remaining issue was `entry "Title"` → `/Title` syntax. Tests 1–2 pre-checked. Test 3 is current focus.
+**Version 0.1.0-alpha** — "Aero Alpha"
+
+> **Checkpoint: Alpha — Core Architecture Complete (2026-06-13)**
+> Installer completes, Limine boots with correct menu entries. Current blocker: black screen after selecting default boot entry.
+> Tests 1–2 pre-checked. Test 3 is current focus. Test 4 deferred until beta.
 
 ## Prerequisites
 
@@ -110,11 +112,25 @@ bash test.sh boot
 bash test.sh boot
 ```
 
+**Step 2 — If black screen occurs:**
+
+The Limine menu appears but selecting `/Aero Linux` results in a black screen. To debug:
+
+1. First verify the Limine menu shows entries: `/Aero Linux`, `/Aero Linux (fallback)`, `/Aero Linux (snapshot)`. If not, check `limine.conf` syntax on the ESP.
+2. Modify `limine.conf` cmdline to add `debug` and remove `quiet loglevel=3`:
+   - The config is at `/boot/EFI/BOOT/limine.conf` inside the installed system
+   - To modify before boot: mount the qcow2 with `guestmount` on the host, or rebuild the ISO with the change
+3. Rebuild ISO: `sudo bash build.sh`
+4. Re-install: `bash test.sh install` (delete old disk first: `rm -f /tmp/aero-test-disk.qcow2`)
+5. Re-boot: `bash test.sh boot`
+6. Observe kernel output — look for root device errors, panic messages, or module loading failures
+7. Test the fallback entry from the Limine menu
+
 **Expected outcomes:**
 - [ ] Limine bootloader menu appears in QEMU window
-- [ ] Default entry boots the installed kernel + initramfs
-- [ ] System reaches greetd/tuigreet login screen
-- [ ] Login with the user created during install (e.g. `tester` / `test123`)
+- [ ] *KNOWN ISSUE: Default entry produces black screen. Debugging in progress.*
+- [ ] ~~Default entry boots the installed kernel + initramfs~~ (blocked)
+- [ ] ~~System reaches greetd/tuigreet login screen~~ (blocked)
 - [ ] `aero-firstboot.service` runs on first boot:
   - [ ] Phase 2 — Snapper configuration:
     - [ ] `snapper -c root create-config /` succeeds
@@ -194,3 +210,39 @@ After a successful boot of the installed system, check:
 - Check journal: `journalctl -u aero-firstboot.service -b`
 - Manual test: `sudo snapper -c root create-config /` (outside arch-chroot)
 - Enable boot snapshots: `systemctl enable --now snapper-boot`
+
+---
+
+## Appendix: Known Bugs (Alpha)
+
+### Boot Black Screen (Priority 1)
+- Limine menu appears, default entry selected, but system does not reach greetd
+- Likely causes: missing root device, initramfs issue, or kernel panic
+- **Debug steps:**
+  1. Remove `quiet loglevel=3` from limine.conf cmdline, add `debug`
+  2. Rebuild ISO, reinstall
+  3. Observe kernel output on boot
+  4. Test fallback entry
+  5. Verify root=UUID matches blkid
+  6. Check initramfs for btrfs: `lsinitramfs /boot/initramfs-linux.img | grep btrfs`
+
+### OVMF Variable Persistence
+- `/tmp/OVMF_VARS.4m.fd` retains UEFI boot state across QEMU sessions
+- Stale variables can cause PXE fallthrough even with valid bootloader
+- **Fix:** `rm -f /tmp/OVMF_VARS.4m.fd` before every `bash test.sh boot`
+
+### Test Disk Reuse
+- `/tmp/aero-test-disk.qcow2` is NOT overwritten on re-install
+- Old install persists, hiding installer changes
+- **Fix:** `rm -f /tmp/aero-test-disk.qcow2` before `bash test.sh install`
+
+### Snapper arch-chroot Failure
+- `snapper -c root create-config /` fails in chroot with `IO Error`
+- Root cause unknown — Btrfs subvolumes and snapshots directory are valid
+- **Workaround:** already implemented — runs on first boot via `aero-firstboot.service`
+
+### Other Known Issues
+- BIOS bootloader install broken (UEFI-only for now)
+- NVIDIA GPU auto-detection pacman hook target incorrect
+- `btop`/`lazygit` duplicated in packages (cosmetic)
+- Limited installer error handling and no rollback path
