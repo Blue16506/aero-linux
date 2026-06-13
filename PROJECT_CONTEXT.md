@@ -4,7 +4,7 @@
 
 A custom Arch Linux distribution focused on simplicity, reliability, performance, and a polished Hyprland desktop experience. Builds as a bootable ArchISO with an interactive TUI installer and minimal post-installation setup.
 
-**Status:** Pre-alpha — Installer Validation In Progress. ISO builds, UEFI boots, Hyprland desktop fully functional. Installer now starts, partitions, creates filesystems, and begins pacstrap. Blocker: disk selector rendering/redraw bug and pacstrap provider prompts (iptables/mkinitcpio/jack).
+**Status:** Pre-alpha — Installer Validation In Progress. ISO builds, UEFI boots, Hyprland desktop fully functional. Installer now starts, partitions, creates filesystems, and begins pacstrap. Disk selector rendering fixed. Blocker: pacstrap provider prompts (iptables/mkinitcpio/jack).
 
 ## Core Goals
 
@@ -244,10 +244,38 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 16. Zsh config deployment: changed `cp .../*` to `cp .../.` in customize_airootfs.sh to include dotfiles (`.zshrc`) in liveuser home — fixes zsh new-user wizard on first login
 17. aero-install alias: added `alias aero-install='sudo /usr/local/bin/aero-install'` to aliases.zsh — fixes documented command without sudo
 18. parted dependency: added `parted` to packages.x86_64 — installer uses parted for partitioning but it was not included in the live ISO
+19. Disk selector rendering: moved all interactive TUI rendering to `/dev/tty` instead of `>&2` — fixes invisible menu and non-updating `>` marker in QEMU/Ghostty
+
+### Fix 23 — Disk selector rendering via /dev/tty
+
+**Root cause:**
+Interactive TUI rendering inside command substitutions (`$(...)`) using inherited stderr (`>&2`) was unreliable in the QEMU/Ghostty environment. The selector logic worked internally, but the menu and `>` marker did not render correctly.
+
+**Fix:**
+Moved all interactive selector rendering to `/dev/tty`.
+
+**Affected:**
+- `select_opt()`
+- `select_timezone()`
+- `"Available disks:"` header
+
+**Design rules:**
+- Interactive TUI rendering → `/dev/tty`
+- Selector return values → stdout
+- Logs/errors → stderr
+
+**Status:**
+Disk selector now renders correctly.
+
+**Validated:**
+- `/dev/fd0` and `/dev/vda` are both visible.
+- Arrow keys work.
+- `j/k` navigation works.
+- Enter selection works.
+- Internal installer state matches the selected disk.
 
 ### Known Issues (Installer Validation — Session 2026-06-13)
 
-- **Disk selector rendering/redraw bug**: Internal selection changes correctly. Enter selects correct disk. Visual `>` marker does not reliably redraw. Highest-priority UX issue.
 - **pacstrap provider prompts**: Installer prompts for provider selection during pacstrap: iptables vs iptables-legacy, mkinitcpio vs booster vs dracut, jack2 vs pipewire-jack. Installation eventually fails with "Errors occurred, no packages were upgraded."
 - **BIOS bootloader installation broken**: `$LIMINE_FLAG` variable not expanded inside quoted heredoc in aero-install.
 - NVIDIA GPU detection pacman hook target is incorrect — `hardware-detect.sh` line 32 uses invalid `Target` directive with file path.
@@ -256,6 +284,21 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 - `base-devel` on ISO adds ~200-300MB unnecessarily
 - Root password silently set to user password (aero-install line 244)
 - `linux-firmware` is largest ISO contributor (~700MB)
+
+### Current Status
+
+**Latest successful validation point:**
+- Installer reaches package installation phase.
+- Partitioning succeeds.
+- Filesystems are created.
+- Subvolumes mount correctly.
+- `pacstrap` starts and downloads packages successfully.
+
+**Latest blocker:**
+- Interactive provider prompts during `pacstrap`:
+  - iptables vs iptables-legacy
+  - mkinitcpio vs booster vs dracut
+  - jack2 vs pipewire-jack
 
 ## Definition of Success
 
@@ -307,7 +350,7 @@ The installer was tested interactively in QEMU. Key milestones:
 - Installation eventually stops with: "Errors occurred, no packages were upgraded."
 - Full installation has not yet completed.
 
-### What Was Fixed This Session (Fixes 18-22)
+### What Was Fixed This Session (Fixes 18-23)
 
 1. **Fix 18 — select_opt Enter key and return value** (`aero-install:28-49`): Enter sent `$'\n'`/`$'\r'` in raw mode but break case only matched `""`. Also `return "$sel"` with `sel>0` returned non-zero exit code, triggering `set -e`. Fixed by adding newline/CR to case; redirecting UI to stderr; replacing `return "$sel"` with `echo "$sel"` (stdout) + command substitution in caller.
 
@@ -319,14 +362,14 @@ The installer was tested interactively in QEMU. Key milestones:
 
 5. **Fix 22 — Missing parted dependency** (`packages.x86_64:15`): Installer uses `parted` for partitioning but it was not listed in packages.x86_64. Added to the "Installer & boot" section.
 
-### Current Blockers
+6. **Fix 23 — Disk selector rendering via /dev/tty** (`aero-install:33,35,45,47,216`): Interactive TUI output using `>&2` was unreliable inside `$(...)` subshells. Changed all selector rendering to write directly to `/dev/tty` instead of `>&2`. Fixes the invisible menu and non-updating `>` marker.
 
-1. **PRIORITY 1 — Disk selector rendering bug**: The `>` cursor marker does not reliably redraw when navigating. Internal selection tracks correctly (Enter picks the right disk), but the visual display is confusing to the user. Root cause unknown — possibly terminal escape sequence interaction with `$(...)` command substitution in `select_opt`. Needs investigation.
+### Current Blocker
 
-2. **PRIORITY 2 — pacstrap provider prompts**: `pacstrap` prompts for interactive provider selection (iptables vs iptables-legacy, mkinitcpio vs booster vs dracut, jack2 vs pipewire-jack). Arch Linux recently added these as "virtual" providers that require explicit choice. The installation is non-interactive during pacstrap, causing failure with "Errors occurred, no packages were upgraded." Fix: identify the packages that trigger these prompts and handle them via `--needed`, `pacman -S --ask 4`, or explicitly specifying the provider in `packages.x86_64`.
+1. **PRIORITY 1 — pacstrap provider prompts**: `pacstrap` prompts for interactive provider selection (iptables vs iptables-legacy, mkinitcpio vs booster vs dracut, jack2 vs pipewire-jack). Arch Linux recently added these as "virtual" providers that require explicit choice. The installation is non-interactive during pacstrap, causing failure with "Errors occurred, no packages were upgraded." Fix: identify the packages that trigger these prompts and handle them via `--needed`, `pacman -S --ask 4`, or explicitly specifying the provider in `packages.x86_64`.
 
 ### Recommended First Task for Next Session
 
-Fix the pacstrap provider prompts (Priority 2). This is the functional blocker — even if the disk selector rendering is ugly, it still selects correctly. But pacstrap must complete without interactive prompts for the installer to succeed. The fix is to identify which packages in the pacstrap list pull in iptables/initramfs/jack as dependencies and either:
+Fix the pacstrap provider prompts — the only remaining functional blocker. Identify which packages in the pacstrap list pull in iptables/initramfs/jack as dependencies and either:
 - Add explicit provider packages (e.g., `mkinitcpio`, `pipewire-jack`) to `packages.x86_64`, or
 - Set `--noconfirm` equivalent for provider selection via `pacman.conf` or `PACMAN` environment variables.

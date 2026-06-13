@@ -30,9 +30,9 @@ select_opt() {
     while true; do
         for i in "${!opts[@]}"; do
             if [[ $i -eq $sel ]]; then
-                printf " \033[1;32m>\033[0m %s\n" "${opts[$i]}" >&2
+                printf " \033[1;32m>\033[0m %s\n" "${opts[$i]}" >/dev/tty
             else
-                printf "   %s\n" "${opts[$i]}" >&2
+                printf "   %s\n" "${opts[$i]}" >/dev/tty
             fi
         done
         read -rsn1 k
@@ -42,9 +42,9 @@ select_opt() {
             '[B'|j) ((sel < ${#opts[@]}-1)) && ((++sel)) ;;
             $'\n'|$'\r'|"")   break ;;
         esac
-        printf "\033[%dA" "${#opts[@]}" >&2
+        printf "\033[%dA" "${#opts[@]}" >/dev/tty
     done
-    printf "\033[%dB" "${#opts[@]}" >&2
+    printf "\033[%dB" "${#opts[@]}" >/dev/tty
     echo "$sel"
 }
 
@@ -213,7 +213,7 @@ done < <(lsblk -ndo PATH)
 
 [[ ${#AVAILABLE_DISKS[@]} -eq 0 ]] && error "No disks found"
 
-printf "Available disks:\n" >&2
+printf "Available disks:\n" >/dev/tty
 DISK_SEL=$(select_opt "Select installation disk" "${AVAILABLE_DISKS[@]}")
 DISK="${AVAILABLE_DISKS[$DISK_SEL]%% *}"
 info "Selected disk: $DISK"

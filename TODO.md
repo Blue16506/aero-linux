@@ -90,71 +90,47 @@
 - [x] Fix zsh config deployment — change `cp .../*` to `cp .../.` in customize_airootfs.sh to include dotfiles (`.zshrc`) in liveuser home
 - [x] Fix aero-install alias — add `alias aero-install='sudo /usr/local/bin/aero-install'` to aliases.zsh
 - [x] Fix parted dependency — add `parted` to packages.x86_64 (installer uses it for partitioning)
+- [x] Fix disk selector rendering using `/dev/tty` — moved all interactive TUI rendering from `>&2` to `/dev/tty`
 
 ### Validation Progress (2026-06-13)
 - [x] Installer launches from liveuser
 - [x] aero-install alias works
 - [x] Root escalation works
 - [x] Timezone selection works
-- [x] Disk selection works internally
+- [x] Disk selection renders correctly
+- [x] Disk selection state matches selected device
 - [x] Partitioning succeeds (parted)
 - [x] Filesystem creation succeeds (mkfs.btrfs, mkfs.fat)
 - [x] Btrfs subvolume creation succeeds
 - [x] Subvolume mounting succeeds
+- [x] pacstrap starts
 
 ---
 
 ## Next Session — Installer Validation (Priority Order)
 
-High-priority blockers:
+High-priority blocker:
 
-1. Investigate disk selector redraw bug (selection works internally but visual marker does not always update correctly).
-2. Identify package(s) causing pacstrap provider prompts.
-3. Make pacstrap installation fully non-interactive.
-4. Re-run full installer validation from partitioning through first boot.
+1. Investigate pacstrap provider prompts:
+   - iptables vs iptables-legacy
+   - mkinitcpio vs booster vs dracut
+   - jack2 vs pipewire-jack
+2. Make pacstrap fully non-interactive.
+3. Re-run full installer validation from partitioning through first boot.
 
 ### Validate Post-Pacstrap Phases
 
-- [ ] Validate pacstrap completion
-- [ ] Validate arch-chroot phase
-- [ ] Validate mkinitcpio
+- [ ] Validate full package installation
+- [ ] Validate arch-chroot stage
+- [ ] Validate mkinitcpio generation
+- [ ] Validate bootloader installation
 - [ ] Validate greetd configuration
 - [ ] Validate snapper configuration
-- [ ] Validate installer completion (Phase 10-11)
-- [ ] Validate first boot (Test 3)
-- [ ] Validate greetd login on installed system
-- [ ] Validate Hyprland startup on installed system
+- [ ] Validate successful installer completion
+- [ ] Validate first boot into installed system
+- [ ] Validate greetd login
+- [ ] Validate Hyprland startup
 - [ ] Validate user configuration deployment
-
-### Important (Lower Priority)
-
-- [ ] Fix BIOS bootloader install — `$LIMINE_FLAG` variable not expanded in quoted heredoc (aero-install)
-- [ ] Fix hardware-detect.sh: pacman `Target` directive with file path (line 32) is invalid
-- [ ] Fix hardware-detect.sh: all `pacman -S` calls masked with `|| true`
-- [ ] Fix root password silently set to user password (aero-install line 244)
-- [ ] Remove `archinstall` from `packages.x86_64` (unused; ~2MB)
-- [ ] Remove `btop` and `lazygit` from `desktop.packages` (already on ISO)
-- [ ] Remove `base-devel` from `packages.x86_64` (adds ~200-300MB)
-- [ ] Remove `snapper` from `packages.x86_64` (only needed on installed system)
-- [ ] Remove `reflector` and `pacman-contrib` from `packages.x86_64` (not essential on live ISO)
-- [ ] Consider trimming `linux-firmware` (largest ISO contributor ~700MB)
-- [ ] Walker keybinding in live environment: `SUPER+SPACE` references walker which is not on the ISO
-- [ ] Fix duplicate config directory list between `customize_airootfs.sh` (line 60) and `aero-install` (line 535)
-
----
-
-## Important
-
-- [ ] Fix BIOS bootloader install — `$LIMINE_FLAG` variable not expanded in quoted heredoc (aero-install)
-- [ ] Fix hardware-detect.sh: pacman `Target` directive with file path (line 32) is invalid
-- [ ] Fix hardware-detect.sh: all `pacman -S` calls masked with `|| true`
-- [ ] Fix root password silently set to user password (aero-install line 244)
-- [ ] Remove `base-devel` from `packages.x86_64` (adds ~200-300MB)
-- [ ] Remove `snapper` from `packages.x86_64` (only needed on installed system)
-- [ ] Remove `reflector` and `pacman-contrib` from `packages.x86_64` (not essential on live ISO)
-- [ ] Consider trimming `linux-firmware` (largest ISO contributor ~700MB)
-- [ ] Walker keybinding in live environment: `SUPER+SPACE` references walker which is not on the ISO
-- [ ] Fix duplicate config directory list between `customize_airootfs.sh` (line 60) and `aero-install` (line 535)
 
 ---
 
