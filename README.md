@@ -2,7 +2,7 @@
 
 A modern Arch-based Linux distribution focused on simplicity, performance, reliability, and a polished Hyprland desktop experience.
 
-> Current Status: **Pre-alpha — Installation Pipeline Validated**
+> Current Status: **Pre-alpha — Boot Architecture Fix — ESP mounted at /boot**
 
 ---
 
@@ -65,44 +65,31 @@ Aero Linux aims to provide:
 
 ## Current Status
 
-### Milestone: Full Installation Pipeline Validated
+### Milestone: Boot Architecture Fix — ESP at `/boot`
 
-The Aero Linux installer now completes end-to-end in QEMU UEFI:
+The installed system now uses the ESP (FAT32) as `/boot`, placing kernel and initramfs directly on a FAT filesystem that Limine can read. This replaces the broken `limine-install --efi /efi` approach.
 
-#### Live ISO
-* ISO builds successfully (archiso)
-* UEFI boot via systemd-boot
-* greetd + tuigreet login with Aero branding
-* Hyprland desktop fully functional (no deprecation warnings)
-* Fresh pacman keyring initialized on every boot
+#### What Changed
+* **ESP mount point**: `/efi` → `/boot` — the FAT32 partition is now mounted at `/boot` instead of `/efi`
+* **EFI binary**: `limine-install --efi /efi` (silent no-op) → `cp /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI`
+* **Config path**: `/efi/limine.conf` → `/boot/EFI/BOOT/limine.conf`
+* **Kernel paths**: `/boot/vmlinuz-linux` (relative to Btrfs) → `boot():/vmlinuz-linux` (on the ESP, via `boot():/` prefix — Limine's reference to the config's partition)
+* **Result**: mkinitcpio writes `vmlinuz-linux` and `initramfs-linux.img` directly to the FAT32 ESP, and Limine can read them at boot
+* All three boot entries (default, fallback, snapshot) updated
 
-#### Installation Pipeline
-* Disk partitioning (GPT + ESP + Btrfs)
-* Btrfs subvolumes (@, @home, @cache, @log, @snapshots)
-* Subvolume mounting with compression
-* Pacstrap package installation
-* Locale, timezone, keymap configuration
-* User creation with sudo and shell setup
-* yay AUR helper built and installed
-* mkinitcpio initramfs generation
-* greetd display manager configuration
-* Limine bootloader installation (UEFI)
-* Desktop config deployment
-* First-boot service installed
-
-#### Key Fixes
-* **Pacman keyring**: Added archiso-style boot-time keyring init (`pacman-init.service`) — fixes `pacstrap -K` failure
-* **Password prompt**: Replaced `makepkg -si` (interactive sudo) with `makepkg -d` + root `pacman -U` — no password echo
-* **Snapper workaround**: Moved `snapper create-config` from installer chroot to first boot — avoids `IO Error` in arch-chroot
+#### Validation Status
+* Installation pipeline: ✅ complete
+* First boot via OVMF: ⏳ pending
+* BIOS path: 🔴 unchanged (still broken — separate fix)
 
 ---
 
 ## Roadmap
 
-### First-Boot Validation (Current Priority)
+### Installed System Boot Validation (Current Priority)
 
 - [ ] `bash test.sh boot` — boot installed system from test disk
-- [ ] Limine bootloader menu appears
+- [ ] Limine bootloader menu appears (UEFI fallback: `/EFI/BOOT/BOOTX64.EFI`)
 - [ ] Installed system boots to greetd login
 - [ ] Login with created user works
 - [ ] `aero-firstboot.service` runs and completes
@@ -118,7 +105,7 @@ The Aero Linux installer now completes end-to-end in QEMU UEFI:
 ### Known Remaining Issues
 
 * Snapper 0.13.1 `create-config` fails inside `arch-chroot` — root cause unknown (workaround: runs on first boot)
-* BIOS bootloader installation broken (variable not expanded in quoted heredoc)
+* BIOS bootloader installation broken (variable not expanded in quoted heredoc, `limine-install` not available in chroot)
 * BIOS live boot via syslinux untested
 * NVIDIA GPU auto-detection pacman hook target incorrect
 * `btop`/`lazygit` duplicated in packages

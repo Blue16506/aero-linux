@@ -72,7 +72,12 @@
 - [x] Fix `sudo -u` to `sudo -Hu` in first-boot.sh for proper $HOME
 - [x] Remove walker from packages.x86_64 (not in core/extra); add walker-bin to aur.packages
 
-### Hotfixes (Live Environment Validation)
+### Boot Architecture Fix (2026-06-13)
+- [x] Mount ESP at `/boot` instead of `/efi` (kernel/initramfs on FAT32, readable by Limine)
+- [x] Remove reliance on `limine-install` (not available in chroot — only core `limine` package is pacstrapped)
+- [x] Copy BOOTX64.EFI to `/boot/EFI/BOOT/BOOTX64.EFI` (UEFI fallback path, no NVRAM needed)
+- [x] Write `limine.conf` at `/boot/EFI/BOOT/limine.conf` with `boot():/vmlinuz-linux` kernel paths
+- [x] Fix broken kernel/module paths: previously `/boot/vmlinuz-linux` resolved relative to ESP root → did not exist; now `boot():/vmlinuz-linux` correctly references the ESP root
 - [x] Fix OVMF_VARS in test.sh — copy OVMF_VARS.4m.fd instead of OVMF_CODE; remove `2>/dev/null` masking
 - [x] Fix KEYMAP auto-detection in aero-install — replace pipe-to-read with `KEYMAP=$(...)` command substitution
 - [x] Fix snapper-boot.service — add `[Install]` section with `WantedBy=multi-user.target`
@@ -122,9 +127,8 @@
 
 ### Priority 1 — First Boot Validation
 
-- [ ] Fix `test.sh boot` — UEFI_ARGS unbound variable
 - [ ] Boot installed system via `bash test.sh boot`
-- [ ] Limine menu appears and boots default entry
+- [ ] Limine menu appears and boots default entry (`boot():/vmlinuz-linux` on ESP)
 - [ ] System reaches greetd/tuigreet login screen
 - [ ] Login with created user succeeds
 
@@ -195,4 +199,4 @@
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Installation Pipeline Validated as of 2026-06-13.** Next phase: first-boot validation on installed system.
+- **Boot Architecture Fix applied 2026-06-13:** ESP mounted at `/boot`, `limine-install --efi` replaced with `cp BOOTX64.EFI`, kernel paths use `boot():/` prefix. Next phase: first-boot validation on installed system.

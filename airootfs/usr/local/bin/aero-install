@@ -292,15 +292,15 @@ umount /mnt
 info "Mounting subvolumes..."
 mount -o compress=zstd,subvol=@ "$ROOT_PART" /mnt
 
-mkdir -p /mnt/{home,var/cache,var/log,.snapshots,boot}
+mkdir -p /mnt/{home,var/cache,var/log,.snapshots}
 mount -o compress=zstd,subvol=@home "$ROOT_PART" /mnt/home
 mount -o compress=zstd,subvol=@cache "$ROOT_PART" /mnt/var/cache
 mount -o compress=zstd,subvol=@log "$ROOT_PART" /mnt/var/log
 mount -o compress=zstd,subvol=@snapshots "$ROOT_PART" /mnt/.snapshots
 
 if $UEFI; then
-    mkdir -p /mnt/efi
-    mount "$EFI_PART" /mnt/efi
+    mkdir -p /mnt/boot
+    mount "$EFI_PART" /mnt/boot
 else
     mount "$BOOT_PART" /mnt/boot
 fi
@@ -452,28 +452,28 @@ ok
 info "Installing Limine bootloader..."
 
 if $UEFI; then
-    arch-chroot /mnt /bin/bash <<'CHROOT'
-limine-install --efi /efi
-cat > /efi/limine.conf <<'LIMINE'
+    mkdir -p /mnt/boot/EFI/BOOT
+    cp /usr/share/limine/BOOTX64.EFI /mnt/boot/EFI/BOOT/BOOTX64.EFI
+    cat > /mnt/boot/EFI/BOOT/limine.conf <<'LIMINE'
 timeout: 5
 
 entry "Aero Linux"
     protocol: linux
-    kernel_path: /boot/vmlinuz-linux
+    kernel_path: boot():/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@ quiet loglevel=3
-    module_path: /boot/initramfs-linux.img
+    module_path: boot():/initramfs-linux.img
 
 entry "Aero Linux (fallback)"
     protocol: linux
-    kernel_path: /boot/vmlinuz-linux
+    kernel_path: boot():/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@ quiet loglevel=3
-    module_path: /boot/initramfs-linux-fallback.img
+    module_path: boot():/initramfs-linux-fallback.img
 
 entry "Aero Linux (snapshot)"
     protocol: linux
-    kernel_path: /boot/vmlinuz-linux
+    kernel_path: boot():/vmlinuz-linux
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@/.snapshots/X/snapshot quiet loglevel=3
-    module_path: /boot/initramfs-linux.img
+    module_path: boot():/initramfs-linux.img
 
 entry "Reboot"
     protocol: reboot
@@ -481,10 +481,8 @@ entry "Reboot"
 entry "Power Off"
     protocol: poweroff
 LIMINE
-CHROOT
-    # Replace placeholder UUID
     ROOT_UUID=$(blkid -s UUID -o value "$ROOT_PART")
-    sed -i "s/ROOT_UUID/$ROOT_UUID/g" /mnt/efi/limine.conf
+    sed -i "s/ROOT_UUID/$ROOT_UUID/g" /mnt/boot/EFI/BOOT/limine.conf
 else
     arch-chroot /mnt /bin/bash <<'CHROOT'
 limine-install --bios /boot /dev/DISK

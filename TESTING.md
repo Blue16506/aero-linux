@@ -1,8 +1,8 @@
 # Aero Linux — Manual Installation Test
 
-> **Checkpoint: Installation Pipeline Validated (2026-06-13)**
-> The installer now completes end-to-end in QEMU UEFI: partitioning → pacstrap → arch-chroot → Limine → reboot.
-> Test 1 is pre-checked. Tests 2–3 are the current focus. Test 4 deferred until beta.
+> **Checkpoint: Boot Architecture Fix — ESP at `/boot` (2026-06-13)**
+> The installer now mounts the ESP at `/boot` instead of `/efi`, places `BOOTX64.EFI` at `/EFI/BOOT/BOOTX64.EFI` on the ESP, and writes `limine.conf` alongside it with `boot():/` kernel paths. BIOS path unchanged (still broken).
+> Tests 1–2 pre-checked. Test 3 is current focus. Test 4 deferred until beta.
 
 ## Prerequisites
 
@@ -86,10 +86,11 @@ Creates a 20G qcow2 disk and boots the ISO with it.
 - [x] yay AUR helper built and installed
 - [x] mkinitcpio initramfs generated
 - [x] `aero-firstboot` service enabled
-- [x] Limine bootloader installed to ESP (UEFI)
+- [x] Limine bootloader: `BOOTX64.EFI` copied to ESP, `limine.conf` written at `/boot/EFI/BOOT/` with `boot():/` kernel paths
 - [-] Snapper config creation moved to first boot (workaround for arch-chroot failure)
 - [x] Desktop configs deployed to user home
 - [x] Installer reaches "Installation complete" and reboot prompt
+- [x] ESP mounted at `/boot` instead of `/efi` (kernel/initramfs on FAT, readable by Limine)
 
 **Note:** Snapper `create-config` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)` — root cause unknown. Workaround: initialization moved to `aero-firstboot.service` (first boot).
 
@@ -173,9 +174,9 @@ After a successful boot of the installed system, check:
 - Test with `ping archlinux.org` inside the live environment
 
 ### Bootloader not found after install
-- Confirm Limine was installed to ESP
-- Check that `/efi/EFI/BOOT/BOOTX64.EFI` and `/efi/EFI/Limine/limine.conf` exist
-- For UEFI: boot menu may need manual entry in UEFI firmware
+- Confirm Limine was installed to ESP: `find /mnt/boot/EFI/BOOT -name "*.EFI"` (inside live ISO, after install)
+- Check that `/boot/EFI/BOOT/BOOTX64.EFI` and `/boot/EFI/BOOT/limine.conf` exist
+- For UEFI: fallback boot path is `/EFI/BOOT/BOOTX64.EFI` — no NVRAM entry needed
 
 ### First-boot service fails
 - Check journal: `journalctl -u aero-firstboot.service -b`

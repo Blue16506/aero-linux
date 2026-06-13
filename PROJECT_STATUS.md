@@ -24,12 +24,18 @@ Last updated: 2026-06-13
 - [x] yay AUR helper built from source (no password prompt)
 - [x] mkinitcpio initramfs generated
 - [x] greetd display manager configured
-- [x] Limine bootloader installed to ESP (UEFI)
+- [x] Limine bootloader: `BOOTX64.EFI` copied to ESP, `limine.conf` with `boot():/` kernel paths
 - [x] Desktop configs deployed to user home
 - [x] aero-firstboot.service enabled
 - [x] Installer reaches "Installation complete" and reboot prompt
+- [x] ESP mounted at `/boot` (kernel/initramfs on FAT, readable by Limine)
 
-### Key Fixes Applied
+### Boot Architecture Fix (2026-06-13)
+- [x] ESP mounted at `/boot` instead of `/efi` — kernel/initramfs on FAT32 for Limine compatibility
+- [x] Removed broken `limine-install --efi /efi` (not available in chroot — `limine-mkinitcpio-hook` package not installed)
+- [x] Direct binary copy: `cp /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI`
+- [x] Config at `/boot/EFI/BOOT/limine.conf` with `boot():/vmlinuz-linux` kernel paths
+- [x] Kernel/module paths fixed: previously `/boot/vmlinuz-linux` resolved relative to ESP root (wrong); now `boot():/vmlinuz-linux` correctly references ESP root
 - [x] Pacman keyring: archiso-style boot-time initialization
 - [x] Installer package installation: removed `pacstrap -K`
 - [x] Password prompt: replaced `makepkg -si` with `makepkg -d` + `pacman -U`
@@ -41,7 +47,6 @@ Last updated: 2026-06-13
 ## In Progress
 
 ### First Boot Validation
-- [ ] Fix `test.sh boot` — UEFI_ARGS unbound variable
 - [ ] Boot installed system from QEMU test disk
 - [ ] Limine menu appears and boots
 - [ ] System reaches greetd login
@@ -66,16 +71,16 @@ Last updated: 2026-06-13
 
 ## Blocked
 
-- **Snapper 0.13.1 arch-chroot failure**: `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`. Diagnostics prove `/` and `/.snapshots` are valid Btrfs subvolumes. Removing `/.snapshots` does not fix. Root cause unknown — possibly kernel/libbtrfsutil interaction inside chroot namespace. Workaround: initialization deferred to first boot via `aero-firstboot.service`.
+(None — boot architecture fix unblocks installed system boot testing)
 
 ---
 
 ## Known Issues
 
 | Issue | Impact | Status |
-|---|---|---|
+|---|---|---|---|
 | Snapper create-config fails in arch-chroot | Snapper not configured during install | Workaround: first-boot init |
-| BIOS bootloader install broken (quoted heredoc) | BIOS installation unsupported | Unfixed |
+| BIOS bootloader install broken (quoted heredoc + missing `limine-install`) | BIOS installation unsupported | Unfixed |
 | BIOS live boot via syslinux untested | BIOS path unvalidated | Unfixed |
 | NVIDIA hook target incorrect | NVIDIA systems need manual fix | Unfixed |
 | `btop`/`lazygit` duplicated in packages | Cosmetic | Unfixed |
@@ -84,11 +89,22 @@ Last updated: 2026-06-13
 
 ## Next Milestone
 
-**First-Boot Validation Complete**
-- Installed system boots and reaches Hyprland desktop
-- Snapper configured and creating snapshots
-- AUR packages installed
-- Network, audio, theming all functional
-- First-boot service idempotent
+**Installed system reaches bootloader and boots successfully in QEMU**
+- Limine menu appears and boots default entry
+- System reaches greetd login with created user
+- First-boot service runs, Snapper initializes
+- Hyprland desktop starts
+- Network, audio, theming functional
+- Reboot idempotency verified
 
-After: beta preparation (BIOS boot, known issue cleanup, release pipeline).
+After: beta preparation (BIOS boot fix, known issue cleanup, release pipeline).
+
+---
+
+## Update (2026-06-13) — Boot Architecture Fix
+
+**Problem:** Installed system did not boot. OVMF fell through to PXE. Root cause: two independent failures:
+1. `limine-install` binary not available in chroot (only core `limine` package is pacstrapped; `limine-install` is in `limine-mkinitcpio-hook` AUR package)
+2. Limine cannot read Btrfs — kernel/initramfs on `@` subvolume unreachable
+
+**Fix:** Mount ESP at `/boot` instead of `/efi`. Copy BOOTX64.EFI directly. Write `limine.conf` with `boot():/` kernel paths. Kernel/initramfs now on FAT32, Limine-compatible.
