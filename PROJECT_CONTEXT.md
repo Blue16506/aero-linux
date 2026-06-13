@@ -4,7 +4,7 @@
 
 A custom Arch Linux distribution focused on simplicity, reliability, performance, and a polished Hyprland desktop experience. Builds as a bootable ArchISO with an interactive TUI installer and minimal post-installation setup.
 
-**Status:** Pre-alpha — Installer Validation In Progress. ISO builds, UEFI boots, Hyprland desktop fully functional. Installer now starts, partitions, creates filesystems, and begins pacstrap. Disk selector rendering fixed. Blocker: pacstrap provider prompts (iptables/mkinitcpio/jack).
+**Status:** Pre-alpha — Installer Validation In Progress. ISO builds, UEFI boots, Hyprland desktop fully functional. Installer now starts, partitions, creates filesystems, and begins pacstrap. Disk selector rendering fixed. Live ISO pacman keyring initialized on boot. Yay installation no longer triggers interactive sudo password prompt. Blocker: pacstrap provider prompts (iptables/mkinitcpio/jack).
 
 ## Core Goals
 
@@ -245,6 +245,8 @@ Only `catppuccin` is currently defined. `aero-theme apply <name>` copies theme f
 17. aero-install alias: added `alias aero-install='sudo /usr/local/bin/aero-install'` to aliases.zsh — fixes documented command without sudo
 18. parted dependency: added `parted` to packages.x86_64 — installer uses parted for partitioning but it was not included in the live ISO
 19. Disk selector rendering: moved all interactive TUI rendering to `/dev/tty` instead of `>&2` — fixes invisible menu and non-updating `>` marker in QEMU/Ghostty
+20. Live ISO pacman keyring: added `etc-pacman.d-gnupg.mount`, `pacman-init.service`, and `multi-user.target.wants/pacman-init.service` — initializes a fresh, populated keyring on every live boot (matching official archiso releng)
+21. Yay installation: replaced `makepkg -si` (build + install via sudo, triggers password prompt) with `makepkg -d` (build only, no sudo) + root `pacman -U` (install as root, no sudo) — eliminates interactive sudo password prompt during installer
 
 ### Fix 23 — Disk selector rendering via /dev/tty
 
@@ -273,6 +275,24 @@ Disk selector now renders correctly.
 - `j/k` navigation works.
 - Enter selection works.
 - Internal installer state matches the selected disk.
+
+### Fix 24 — Yay installation without interactive sudo
+
+**Root cause:**
+`sudo -u "$USERNAME" makepkg -si --noconfirm` (inside `arch-chroot /mnt`) triggered an interactive sudo password prompt. `makepkg -si` internally calls `sudo pacman -U <pkgfile> --noconfirm` to install the built package. Since the sudoers entry for $USERNAME was `ALL=(ALL) ALL` (requires password), sudo prompted for authentication. The password characters appeared on screen due to sudo's getpass() interacting with /dev/tty inside the chroot.
+
+**Fix:**
+Split the build and install into two steps:
+1. `makepkg -d --noconfirm` (build only, no internal sudo calls — `-d` skips dependency checking, no `-s`/`-i`)
+2. `pacman -U <pkgfile> --noconfirm` (install as root directly, no sudo involved)
+
+`makepkg -d` calls zero sudo commands. The resulting package is installed with root's `pacman -U`, which requires no password. The interactive sudo password prompt is eliminated entirely.
+
+**Changed:**
+- `aero-install:403-409`: replaced `makepkg -si` with `makepkg -d` + `pacman -U`
+
+**Status:**
+Yay is built as the normal user and installed as root. No sudoers file change needed. No NOPASSWD needed. No terminal stty traps needed.
 
 ### Known Issues (Installer Validation — Session 2026-06-13)
 
@@ -350,7 +370,7 @@ The installer was tested interactively in QEMU. Key milestones:
 - Installation eventually stops with: "Errors occurred, no packages were upgraded."
 - Full installation has not yet completed.
 
-### What Was Fixed This Session (Fixes 18-23)
+### What Was Fixed This Session (Fixes 18-24)
 
 1. **Fix 18 — select_opt Enter key and return value** (`aero-install:28-49`): Enter sent `$'\n'`/`$'\r'` in raw mode but break case only matched `""`. Also `return "$sel"` with `sel>0` returned non-zero exit code, triggering `set -e`. Fixed by adding newline/CR to case; redirecting UI to stderr; replacing `return "$sel"` with `echo "$sel"` (stdout) + command substitution in caller.
 
@@ -363,6 +383,8 @@ The installer was tested interactively in QEMU. Key milestones:
 5. **Fix 22 — Missing parted dependency** (`packages.x86_64:15`): Installer uses `parted` for partitioning but it was not listed in packages.x86_64. Added to the "Installer & boot" section.
 
 6. **Fix 23 — Disk selector rendering via /dev/tty** (`aero-install:33,35,45,47,216`): Interactive TUI output using `>&2` was unreliable inside `$(...)` subshells. Changed all selector rendering to write directly to `/dev/tty` instead of `>&2`. Fixes the invisible menu and non-updating `>` marker.
+
+7. **Fix 24 — Yay installation without interactive sudo** (`aero-install:404-408`): `sudo -u "$USERNAME" makepkg -si --noconfirm` triggered an interactive sudo password prompt because `makepkg -i` internally calls `sudo pacman -U`. Replaced with `makepkg -d --noconfirm` (build only, no internal sudo calls) + `pacman -U ... --noconfirm` (install as root, no sudo). Eliminates the password prompt without changing the sudoers file or adding NOPASSWD.
 
 ### Current Blocker
 

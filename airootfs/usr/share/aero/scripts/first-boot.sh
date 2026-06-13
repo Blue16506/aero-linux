@@ -64,7 +64,40 @@ for i in $(seq 30); do
 done
 
 # ---------------------------------------------------------------------------
-#  Phase 2 – AUR packages
+#  Phase 2 – Snapper configuration
+# ---------------------------------------------------------------------------
+
+info "Configuring Snapper..."
+if command -v snapper &>/dev/null; then
+    if ! [[ -f /etc/snapper/configs/root ]]; then
+        snapper -c root create-config / && \
+        cp /usr/share/aero/configs/snapper/root /etc/snapper/configs/root && \
+        info "Root snapper config created" || \
+        warn "Failed to create root snapper config"
+    else
+        info "Root snapper config already exists"
+    fi
+
+    if ! [[ -f /etc/snapper/configs/home ]]; then
+        snapper -c home create-config /home && \
+        cp /usr/share/aero/configs/snapper/home /etc/snapper/configs/home && \
+        info "Home snapper config created" || \
+        warn "Failed to create home snapper config"
+    else
+        info "Home snapper config already exists"
+    fi
+
+    if [[ -f /etc/snapper/configs/root ]] && [[ -f /etc/snapper/configs/home ]]; then
+        systemctl enable snapper-boot 2>/dev/null || warn "Failed to enable snapper-boot"
+    fi
+
+    ok
+else
+    warn "snapper not installed"
+fi
+
+# ---------------------------------------------------------------------------
+#  Phase 3 – AUR packages
 # ---------------------------------------------------------------------------
 
 if ping -c 1 archlinux.org &>/dev/null && [[ -f "$AERO_PACKAGES/aur.packages" ]]; then
@@ -78,7 +111,7 @@ if ping -c 1 archlinux.org &>/dev/null && [[ -f "$AERO_PACKAGES/aur.packages" ]]
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 3 – Snapper initial snapshots
+#  Phase 4 – Snapper initial snapshots
 # ---------------------------------------------------------------------------
 
 info "Creating initial snapshots..."
@@ -91,7 +124,7 @@ if command -v snapper &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 4 – XDG user directories
+#  Phase 5 – XDG user directories
 # ---------------------------------------------------------------------------
 
 if command -v xdg-user-dirs-update &>/dev/null; then
@@ -101,7 +134,7 @@ if command -v xdg-user-dirs-update &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 5 – Hardware detection
+#  Phase 6 – Hardware detection
 # ---------------------------------------------------------------------------
 
 if [[ -x "$AERO_SCRIPTS/hardware-detect.sh" ]]; then
@@ -111,7 +144,7 @@ if [[ -x "$AERO_SCRIPTS/hardware-detect.sh" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-#  Phase 6 – Branding
+#  Phase 7 – Branding
 # ---------------------------------------------------------------------------
 
 info "Applying branding..."
@@ -133,7 +166,7 @@ fi
 ok
 
 # ---------------------------------------------------------------------------
-#  Phase 7 – Cleanup
+#  Phase 8 – Cleanup
 # ---------------------------------------------------------------------------
 
 info "Cleaning up first-boot service..."

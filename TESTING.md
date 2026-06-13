@@ -1,8 +1,8 @@
 # Aero Linux — Manual Installation Test
 
-> **Checkpoint: Live Environment Validation Passed**
-> The live ISO has been built and verified. No Hyprland warnings remaining (windowrules migrated, uwsm integrated).
-> Test 1 items below are pre-checked. Remaining tests (2–4) are the current focus.
+> **Checkpoint: Installation Pipeline Validated (2026-06-13)**
+> The installer now completes end-to-end in QEMU UEFI: partitioning → pacstrap → arch-chroot → Limine → reboot.
+> Test 1 is pre-checked. Tests 2–3 are the current focus. Test 4 deferred until beta.
 
 ## Prerequisites
 
@@ -44,12 +44,14 @@ bash test.sh live-bios
 
 ## Test 2 — Fresh Installation
 
+**Status: VERIFIED (2026-06-13)** — Section updated to reflect current state.
+
 **Step 1 — Create test disk and boot installer:**
 ```bash
 bash test.sh install
 ```
 
-This creates a 20G qcow2 disk and boots the ISO with it.
+Creates a 20G qcow2 disk and boots the ISO with it.
 
 **Step 2 — Walk through the installer:**
 
@@ -66,23 +68,30 @@ This creates a 20G qcow2 disk and boots the ISO with it.
 | Reboot now? | `y` | After installation completes |
 
 **Step 3 — Wait for installation:**
-- `pacstrap` downloads ~3.2 GiB of packages (5–15 min depending on mirror)
+- `pacstrap` downloads ~3 GiB of packages (5–15 min depending on mirror)
 - Script copies configs, runs `arch-chroot`, configures system
-- If `mkinitcpio` shows `ERROR: module not found: 'libcrc32c'` — this is cosmetic, caused by the module name being `crc32c` not `libcrc32c` in the ISO's `mkinitcpio.conf`. It does not affect the installed system (correct hook list is written during install).
+- yay AUR helper is built and installed during arch-chroot
+- If `mkinitcpio` shows `ERROR: module not found: 'libcrc32c'` — cosmetic; correct hook list is written during install
 
-**Expected outcomes:**
-- [ ] Partitioning completes without error (1 ESP + 1 Btrfs root)
-- [ ] Btrfs subvolumes created: `@`, `@home`, `@cache`, `@log`, `@snapshots`
-- [ ] Pacstrap completes without package conflicts
-- [ ] Fstab generated with UUID-based entries
-- [ ] Timezone symlink created in chroot
-- [ ] User created and added to `wheel,audio,video,input,storage,network`
-- [ ] `sudoers.d/10-aero-user` created with `ALL=(ALL) ALL`
-- [ ] greetd configured with tuigreet + start-hyprland (uwsm wrapper)
-- [ ] NetworkManager, pipewire, wireplumber, greetd enabled
-- [ ] Snapper configs created for `root` and `home`
-- [ ] `aero-firstboot` service enabled
-- [ ] Limine bootloader installed to ESP
+**Verified outcomes:**
+- [x] Partitioning completes without error (1 ESP + 1 Btrfs root)
+- [x] Btrfs subvolumes created: `@`, `@home`, `@cache`, `@log`, `@snapshots`
+- [x] Pacstrap completes without package conflicts
+- [x] Fstab generated with UUID-based entries
+- [x] Locale/timezone/keymap configured in chroot
+- [x] User created and added to `wheel,audio,video,input,storage,network`
+- [x] `sudoers.d/10-aero-user` created with `ALL=(ALL) ALL`
+- [x] greetd configured with tuigreet + start-hyprland (uwsm wrapper)
+- [x] NetworkManager, pipewire, wireplumber, greetd enabled
+- [x] yay AUR helper built and installed
+- [x] mkinitcpio initramfs generated
+- [x] `aero-firstboot` service enabled
+- [x] Limine bootloader installed to ESP (UEFI)
+- [-] Snapper config creation moved to first boot (workaround for arch-chroot failure)
+- [x] Desktop configs deployed to user home
+- [x] Installer reaches "Installation complete" and reboot prompt
+
+**Note:** Snapper `create-config` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)` — root cause unknown. Workaround: initialization moved to `aero-firstboot.service` (first boot).
 
 ---
 
@@ -93,25 +102,39 @@ This creates a 20G qcow2 disk and boots the ISO with it.
 bash test.sh boot
 ```
 
+**Prerequisite:** `bash test.sh install` must have completed successfully.
+
+**Step 1 — Boot the installed system:**
+```bash
+bash test.sh boot
+```
+
 **Expected outcomes:**
-- [ ] Limine bootloader menu appears
+- [ ] Limine bootloader menu appears in QEMU window
 - [ ] Default entry boots the installed kernel + initramfs
 - [ ] System reaches greetd/tuigreet login screen
-- [ ] Login with `tester` / `test123`
-- [ ] `aero-firstboot.service` runs:
-  - [ ] Installs AUR packages from `aur.packages` via yay
-  - [ ] Installs desktop packages via pacman
-  - [ ] Deploys config files to `~/.config/`
-  - [ ] Enables user-level systemd services
-  - [ ] Snapper cleanup timeline enabled
-  - [ ] Creates `/etc/aero-installed` marker
-  - [ ] Disables itself (`ConditionPathExists=/etc/aero-installed`)
-- [ ] Hyprland launches after first-boot completes
+- [ ] Login with the user created during install (e.g. `tester` / `test123`)
+- [ ] `aero-firstboot.service` runs on first boot:
+  - [ ] Phase 2 — Snapper configuration:
+    - [ ] `snapper -c root create-config /` succeeds
+    - [ ] Aero snapper config template applied to root
+    - [ ] `snapper -c home create-config /home` succeeds
+    - [ ] Aero snapper config template applied to home
+    - [ ] `snapper-boot.service` enabled
+  - [ ] Phase 3 — AUR packages installed from `aur.packages` via yay
+  - [ ] Phase 4 — Initial snapper snapshots created
+  - [ ] Phase 5 — XDG user directories created
+  - [ ] Phase 6 — Hardware detection runs
+  - [ ] Phase 7 — Branding applied
+  - [ ] Phase 8 — Service disables itself, `/etc/aero-firstboot-complete` created
+- [ ] Hyprland desktop reaches graphical session
 - [ ] Waybar visible at top of screen
 - [ ] Ghostty terminal available (`Super + Enter`)
 - [ ] NetworkManager connected (DHCP via QEMU user NAT)
 - [ ] `snapper list` shows root and home configs
-- [ ] Snapper snapshots exist
+- [ ] Snapper snapshots exist (`snapper -c root list`)
+- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run)
+- [ ] Reboot and re-test: first-boot does NOT run again
 
 ---
 
@@ -159,7 +182,14 @@ After a successful boot of the installed system, check:
 - Marker file may be missing: check `/etc/aero-installed`
 - yay/AUR build failures are non-fatal (service continues)
 
-### Snapper fails
-- Ensure Btrfs snapshots subvolume exists: `btrfs subvolume list /`
-- Check `/etc/snapper/configs/root` exists
-- Enable with: `systemctl enable --now snapper-timeline.timer`
+### Snapper fails during installer (arch-chroot)
+- Known issue: `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`
+- Workaround: Snapper initialization moved to `aero-firstboot.service` (first boot)
+- Root cause still unknown — `/` is a valid Btrfs subvolume (inode 256), `/.snapshots` is valid, diagnostics pass
+
+### Snapper fails on first boot
+- Check `/etc/snapper/configs/root` exists after first-boot runs
+- Ensure `@snapshots` subvolume is mounted at `/.snapshots`: `findmnt /.snapshots`
+- Check journal: `journalctl -u aero-firstboot.service -b`
+- Manual test: `sudo snapper -c root create-config /` (outside arch-chroot)
+- Enable boot snapshots: `systemctl enable --now snapper-boot`

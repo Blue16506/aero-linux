@@ -84,6 +84,7 @@ case "$MODE" in
         ;;
 
     boot)
+        check_deps
         [[ -f "$TEST_DISK" ]] || error "No test disk found at $TEST_DISK. Run 'install' mode first."
         info "Booting installed system from test disk..."
         qemu-system-x86_64 -enable-kvm -m "$MEM" -smp "$CPUS" -cpu host \

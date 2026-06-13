@@ -2,7 +2,7 @@
 
 A modern Arch-based Linux distribution focused on simplicity, performance, reliability, and a polished Hyprland desktop experience.
 
-> Current Status: **Pre-alpha — Live Environment Validation Passed**
+> Current Status: **Pre-alpha — Installation Pipeline Validated**
 
 ---
 
@@ -65,58 +65,67 @@ Aero Linux aims to provide:
 
 ## Current Status
 
-### Live Environment Validation Passed
+### Milestone: Full Installation Pipeline Validated
 
-The live ISO has been built and verified on UEFI systems:
+The Aero Linux installer now completes end-to-end in QEMU UEFI:
 
-#### Boot & Desktop
-* ISO builds successfully
-* UEFI boot works (systemd-boot)
-* Archiso root filesystem mounts correctly
-* greetd + tuigreet launches with Aero branding
-* Passwordless `liveuser` login works
-* Hyprland launches with Waybar, Ghostty, Neovim, Zsh
-* Desktop is fully usable from the live ISO
+#### Live ISO
+* ISO builds successfully (archiso)
+* UEFI boot via systemd-boot
+* greetd + tuigreet login with Aero branding
+* Hyprland desktop fully functional (no deprecation warnings)
+* Fresh pacman keyring initialized on every boot
 
-#### Fixes Applied
-* OVMF_VARS: corrected source from OVMF_CODE to OVMF_VARS template
-* KEYMAP detection: replaced broken pipe-to-read with command substitution
-* snapper-boot.service: added `[Install]` section with `WantedBy=multi-user.target`
-* Snapper config overlay: custom settings applied after `create-config`
-* Walker: removed from ISO packages (AUR-only); added `walker-bin` to aur.packages
-* Hyprland `pseudotile`: removed (option deleted upstream in 0.55)
-* Hyprland `vfr`: moved from `misc` to `debug` section (upstream change in 0.55)
-* Ghostty `gpu-accelerated`: removed (option no longer exists; GPU always-on)
-* snapper-boot ExecStart: replaced shell operators with systemd `-ExecStart` prefix
-* yay build errors: removed `2>/dev/null` masking from git clone and makepkg
-* windowrules.conf: migrated all 14 rules from deprecated `windowrulev2` to modern `windowrule` syntax
-* greetd launcher: switched from direct `Hyprland` to `start-hyprland` (uwsm wrapper)
+#### Installation Pipeline
+* Disk partitioning (GPT + ESP + Btrfs)
+* Btrfs subvolumes (@, @home, @cache, @log, @snapshots)
+* Subvolume mounting with compression
+* Pacstrap package installation
+* Locale, timezone, keymap configuration
+* User creation with sudo and shell setup
+* yay AUR helper built and installed
+* mkinitcpio initramfs generation
+* greetd display manager configuration
+* Limine bootloader installation (UEFI)
+* Desktop config deployment
+* First-boot service installed
+
+#### Key Fixes
+* **Pacman keyring**: Added archiso-style boot-time keyring init (`pacman-init.service`) — fixes `pacstrap -K` failure
+* **Password prompt**: Replaced `makepkg -si` (interactive sudo) with `makepkg -d` + root `pacman -U` — no password echo
+* **Snapper workaround**: Moved `snapper create-config` from installer chroot to first boot — avoids `IO Error` in arch-chroot
 
 ---
 
 ## Roadmap
 
-### Installer & Installed-System Validation (Current Priority)
+### First-Boot Validation (Current Priority)
 
-* [ ] Full installation via `aero-install` in QEMU VM
-* [ ] First successful installed-system boot
-* [ ] First-boot automation (AUR packages, config deployment, snapper)
-* [ ] Networking (NetworkManager)
-* [ ] Audio (PipeWire)
-* [ ] Snapper snapshots on installed system
-* [ ] Theming on installed system
-* [ ] Walker launcher install from AUR
+- [ ] `bash test.sh boot` — boot installed system from test disk
+- [ ] Limine bootloader menu appears
+- [ ] Installed system boots to greetd login
+- [ ] Login with created user works
+- [ ] `aero-firstboot.service` runs and completes
+- [ ] Hyprland desktop starts
+- [ ] NetworkManager connects (DHCP)
+- [ ] PipeWire audio works
+- [ ] yay AUR helper functional
+- [ ] Snapper configs created on first boot
+- [ ] Snapper snapshots created successfully
+- [ ] First-boot service disables itself
+- [ ] `/etc/aero-firstboot-complete` marker exists
 
 ### Known Remaining Issues
 
+* Snapper 0.13.1 `create-config` fails inside `arch-chroot` — root cause unknown (workaround: runs on first boot)
 * BIOS bootloader installation broken (variable not expanded in quoted heredoc)
-* NVIDIA GPU auto-detection pacman hook target incorrect
 * BIOS live boot via syslinux untested
+* NVIDIA GPU auto-detection pacman hook target incorrect
 * `btop`/`lazygit` duplicated in packages
 
 ### Future Goals (Post-Validation)
 
-* Hyprland Lua migration for remaining configs (if needed)
+* Hyprland Lua migration for remaining configs
 * BIOS bootloader fix
 * NVIDIA pacman hook fix
 * LUKS encryption support
@@ -164,13 +173,15 @@ aero-install
 The installer will:
 
 * Detect boot mode
-* Configure disks
-* Create Btrfs subvolumes
-* Install the base system
-* Configure users
-* Install Limine
-* Configure Snapper
-* Enable required services
+* Configure disks (GPT ESP + Btrfs)
+* Create Btrfs subvolumes (@, @home, @cache, @log, @snapshots)
+* Install the base system (pacstrap)
+* Configure users, locale, timezone, keymap
+* Build yay AUR helper
+* Install Limine bootloader
+* Enable services (greetd, NetworkManager, first-boot)
+* Deploy desktop configurations
+* Snapper is configured on first boot by aero-firstboot.service
 
 ---
 
@@ -217,11 +228,10 @@ and are deployed automatically during first boot.
 
 ## Development Status
 
-Live environment validation is complete — no Hyprland deprecation warnings, clean `start-hyprland` launch. Development is now focused on:
+Installation pipeline validated — installer completes, Limine installs, reboot reached. Development is now focused on:
 
-* Full installation testing via `aero-install`
-* Installed-system boot and first-boot validation
-* Networking, audio, theming, snapper, and AUR package testing
+* First-boot validation: snapper initialization, AUR packages, Hyprland, networking, audio
+* Installed-system boot via `bash test.sh boot`
 * BIOS boot validation
 * Beta preparation after full workflow validation
 

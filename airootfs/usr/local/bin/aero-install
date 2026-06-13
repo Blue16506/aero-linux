@@ -311,7 +311,7 @@ ok
 # ---------------------------------------------------------------------------
 
 info "Installing base system (this may take a while)..."
-pacstrap -K /mnt base linux linux-firmware base-devel btrfs-progs snapper \
+pacstrap /mnt base linux linux-firmware base-devel btrfs-progs snapper \
     hyprland hyprlock hypridle hyprpaper waybar uwsm \
     greetd greetd-tuigreet \
     ghostty \
@@ -403,7 +403,8 @@ chsh -s /usr/bin/zsh "$USERNAME"
 # Build yay from AUR (needed for future AUR packages)
 if sudo -u "$USERNAME" git clone https://aur.archlinux.org/yay.git /tmp/yay; then
     cd /tmp/yay
-    sudo -u "$USERNAME" makepkg -si --noconfirm || true
+    sudo -u "$USERNAME" makepkg -d --noconfirm || true
+    pacman -U yay-*.pkg.tar.zst --noconfirm || true
     cd /
     rm -rf /tmp/yay
 fi
@@ -438,15 +439,8 @@ systemctl enable greetd
 systemctl enable NetworkManager
 systemctl enable pipewire pipewire-pulse wireplumber --global
 
-# Snapper
-snapper -c root create-config /
-cp /usr/share/aero/configs/snapper/root /etc/snapper/configs/root
-snapper -c home create-config /home
-cp /usr/share/aero/configs/snapper/home /etc/snapper/configs/home
-
-# First-boot service and boot-time snapshots (already copied to /etc/systemd/system/ before chroot)
+# First-boot service (snapper-boot is enabled by first-boot.sh)
 systemctl enable aero-firstboot
-systemctl enable snapper-boot
 
 CHROOT
 ok

@@ -91,6 +91,8 @@
 - [x] Fix aero-install alias — add `alias aero-install='sudo /usr/local/bin/aero-install'` to aliases.zsh
 - [x] Fix parted dependency — add `parted` to packages.x86_64 (installer uses it for partitioning)
 - [x] Fix disk selector rendering using `/dev/tty` — moved all interactive TUI rendering from `>&2` to `/dev/tty`
+- [x] Fix live ISO pacman keyring — added `etc-pacman.d-gnupg.mount` + `pacman-init.service` + `multi-user.target.wants/` symlink (matching archiso releng)
+- [x] Fix yay installation interactive sudo prompt — replaced `makepkg -si` (triggers sudo password prompt) with `makepkg -d` + root `pacman -U` (no sudo calls)
 
 ### Validation Progress (2026-06-13)
 - [x] Installer launches from liveuser
@@ -103,34 +105,57 @@
 - [x] Filesystem creation succeeds (mkfs.btrfs, mkfs.fat)
 - [x] Btrfs subvolume creation succeeds
 - [x] Subvolume mounting succeeds
-- [x] pacstrap starts
+- [x] pacstrap installs all packages
+- [x] arch-chroot locale/timezone/keymap configuration
+- [x] User creation with groups and sudo
+- [x] yay AUR helper build and install
+- [x] mkinitcpio initramfs generation
+- [x] greetd display manager configuration
+- [x] First-boot service enabled
+- [x] Limine bootloader installed to ESP
+- [x] Desktop configs deployed
+- [x] Installer reaches "Installation complete" and reboot prompt
 
 ---
 
-## Next Session — Installer Validation (Priority Order)
+## Current Phase: Installed System Validation
 
-High-priority blocker:
+### Priority 1 — First Boot Validation
 
-1. Investigate pacstrap provider prompts:
-   - iptables vs iptables-legacy
-   - mkinitcpio vs booster vs dracut
-   - jack2 vs pipewire-jack
-2. Make pacstrap fully non-interactive.
-3. Re-run full installer validation from partitioning through first boot.
+- [ ] Fix `test.sh boot` — UEFI_ARGS unbound variable
+- [ ] Boot installed system via `bash test.sh boot`
+- [ ] Limine menu appears and boots default entry
+- [ ] System reaches greetd/tuigreet login screen
+- [ ] Login with created user succeeds
 
-### Validate Post-Pacstrap Phases
+### Priority 2 — First-Boot Service
+- [ ] Snapper configuration:
+  - [ ] `snapper -c root create-config /` succeeds on first boot
+  - [ ] `snapper -c home create-config /home` succeeds on first boot
+  - [ ] Aero snapper config templates applied
+  - [ ] `snapper-boot.service` enabled
+- [ ] AUR packages install via yay (network permitting)
+- [ ] Initial snapper snapshots created
+- [ ] Hardware detection runs
+- [ ] Branding applied (wallpaper, theme)
+- [ ] First-boot service disables itself
+- [ ] `/etc/aero-firstboot-complete` marker created
 
-- [ ] Validate full package installation
-- [ ] Validate arch-chroot stage
-- [ ] Validate mkinitcpio generation
-- [ ] Validate bootloader installation
-- [ ] Validate greetd configuration
-- [ ] Validate snapper configuration
-- [ ] Validate successful installer completion
-- [ ] Validate first boot into installed system
-- [ ] Validate greetd login
-- [ ] Validate Hyprland startup
-- [ ] Validate user configuration deployment
+### Priority 3 — Desktop Validation
+- [ ] Hyprland launches after first-boot completes
+- [ ] Waybar visible
+- [ ] Ghostty terminal works
+- [ ] NetworkManager connects (DHCP)
+- [ ] PipeWire audio functional
+- [ ] yay command available and works
+- [ ] pamac/custom package install works
+- [ ] Snapper snapshots can be created manually
+- [ ] `snapper list` shows root and home configs
+
+### Priority 4 — Idempotency
+- [ ] Reboot first-boot does NOT run again
+- [ ] Reboot snapper-boot creates boot-time snapshots
+- [ ] Reboot Hyprland desktop still functional
 
 ---
 
@@ -160,7 +185,8 @@ High-priority blocker:
 - Desktop configs live in `/usr/share/aero/configs/` on the ISO and are copied to `~/.config/` by the installer (Phase 10).
 - Config directory list is duplicated in `customize_airootfs.sh:60` and `aero-install:535` — must keep in sync.
 - `aero-firstboot.service` runs only when `/etc/aero-installed` exists AND `/etc/aero-firstboot-complete` does not.
-- `snapper-boot.service` now has `[Install]` section with `WantedBy=multi-user.target` (fixed in hotfix batch).
+- Snapper initialization (create-config) runs inside first-boot, NOT in the installer chroot (workaround for snapper 0.13.1 arch-chroot failure).
+- `snapper-boot.service` has `[Install]` section with `WantedBy=multi-user.target`.
 - `profiledef.sh` boot modes (`bios.syslinux`, `uefi.systemd-boot`) are for the LIVE ISO only. The installed system uses Limine.
 - greetd + tuigreet provide lightweight TTY-based login (no X11 display manager).
 - Snapper configured for root (`@`) and home (`@home`) subvolumes.
@@ -169,4 +195,4 @@ High-priority blocker:
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Live Environment Validation Passed as of 2026-06-12.** No Hyprland warnings remain. Next phase: installer + installed-system validation.
+- **Installation Pipeline Validated as of 2026-06-13.** Next phase: first-boot validation on installed system.
