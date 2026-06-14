@@ -344,7 +344,7 @@ Development is now focused on:
 
 ---
 
-## START HERE NEXT SESSION
+## CURRENTLY WORKING ON
 
 ### Current State
 - **Version**: v0.1.1-alpha ("Aero Alpha")
@@ -355,7 +355,7 @@ Development is now focused on:
 - **test.sh**: ✅ ISO auto-discovery + `install --clean` support
 - **Known Issues**: Login banner, service validation pending, Snapper arch-chroot workaround
 
-### Next Session Goals
+### Next Short Term Goals
 1. **Full system validation**: NetworkManager, PipeWire, yay, snapper, first-boot service
 2. **Fix remaining bugs**: login banner (`PRETTY_NAME`), empty home directory investigation, snapshot boot entry
 3. **Verify all services**: `systemctl --failed`, snapper lists, network, audio
