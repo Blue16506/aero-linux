@@ -2,17 +2,17 @@
 
 **Version 0.1.1-alpha** — "Aero Alpha"
 
-Last updated: 2026-06-14 (Alpha milestone — first successful desktop boot)
+Last updated: 2026-06-14 (End-of-day wrap — first usable Hyprland session validated)
 
-Project status: **ALPHA — First successful desktop boot achieved**
+Project status: **ALPHA — First usable Hyprland session achieved**
 
-Reason: System installs via TUI installer, boots via Limine, launches Hyprland desktop with Waybar, Ghostty, Neovim, and hyprpaper wallpaper system. Wallpaper architecture migrated from swaybg to hyprpaper. test.sh supports ISO auto-discovery and `install --clean`.
+Reason: Installer works, bootloader works, desktop works, networking works (DHCP + internet confirmed), yay works, PipeWire/WirePlumber active, systemctl --failed = 0, wallpaper fixed, mouse/keyboard work, home directory created correctly. Outstanding: Snapper initialization (P1), audio alsa-utils packaging (P2), login branding (P3).
 
 Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). All pre-1.0 versions carry the `-alpha` suffix.
 
 ---
 
-## Milestone: v0.1.1-alpha — First Successful Desktop Boot
+## Milestone: v0.1.1-alpha — First Usable Hyprland Session
 
 ### Achievements
 - ✅ ISO builds and boots (UEFI via systemd-boot)
@@ -29,13 +29,20 @@ Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). A
 - ✅ Wallpaper system migrated from swaybg to hyprpaper (Hyprland-native)
 - ✅ test.sh auto-discovers newest ISO — no daily date hardcode edits
 - ✅ test.sh supports `install --clean` for fresh qcow2 + OVMF state
-- ✅ First successful desktop boot achieved
+- ✅ NetworkManager DHCP + internet connectivity confirmed
+- ✅ yay AUR helper installed and functional
+- ✅ PipeWire + WirePlumber services active
+- ✅ `systemctl --failed` = 0 (all services healthy)
+- ✅ Mouse and keyboard input working
+- ✅ Home directory created correctly with user files
+- ✅ First usable Hyprland desktop session achieved
 
 ### In Progress
 
 **Current Phase: Alpha Stabilization**
-- Complete system validation (NetworkManager, PipeWire, yay, Snapper, services)
-- Fix remaining Alpha bugs (login banner, empty home, snapshot boot entry)
+- Investigate and fix Snapper initialization (P1)
+- Package `alsa-utils` for audio (P2)
+- Fix login banner branding (P3)
 - Begin Vim Motion Philosophy integration
 - Polish and UX improvements
 
@@ -43,20 +50,24 @@ Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). A
 
 ## Known Bugs (Alpha)
 
-### Desktop & Login
-- **Linux PRETTY_NAME in login banner**: `tuigreet` displays `Linux` from `/etc/os-release` PRETTY_NAME — needs update to show `Aero Linux`.
-- **Empty home directory**: Fresh user home may be missing XDG directories (Desktop, Downloads, etc.) — `xdg-user-dirs-update` runs in first-boot but behavior depends on XDG config presence.
-- **Desktop wallpaper intentionally black until first-boot**: The wallpaper migration to hyprpaper is complete. Default background is black until `aero-theme apply catppuccin` runs during first-boot Phase 7.
+### P1 — Snapper Not Initialized
+- `/.snapshots` exists but `/etc/snapper/configs` is empty. `snapper list-configs` returns no configs.
+- `snapper -c root create-config /` fails — hypothesis: `/.snapshots` is an **ordinary directory**, not a Btrfs subvolume.
+- **Investigate**: `sudo btrfs subvolume show /.snapshots`, `mount | grep snapshots`, `file /.snapshots`.
+- **If normal dir**: remove it safely, retry `sudo snapper -c root create-config /`.
+- **If subvolume**: inspect first-boot.sh ordering and Snapper integration.
+- `snapper-boot.service` lacks `[Install]` section — never enabled by any script.
+- Snapshot boot entry (`/Aero Linux (snapshot)`) untested.
 
-### Snapper
-- `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`. Root cause unknown. Workaround: runs on first boot via `aero-firstboot.service`.
-- `snapper-boot.service` lacks `[Install]` section — never enabled by any script; snapshot boot entry untested.
+### P2 — Audio: alsa-utils Missing
+- PipeWire and WirePlumber services are active.
+- Default audio sink: `auto_null` (Dummy Output) — no real audio device.
+- `aplay` not found — `alsa-utils` not packaged.
+- RTKit, BlueZ, libcamera warnings present but expected/non-fatal in QEMU VM.
+- **Fix**: Add `alsa-utils` to package list or configure PipeWire ALSA compatibility layer.
 
-### Service Validation (Pending)
-- **NetworkManager**: DHCP connectivity in QEMU user NAT untested.
-- **PipeWire audio**: Audio output not yet verified.
-- **yay AUR helper**: Package installation from AUR untested.
-- **first-boot.service**: Full end-to-end run not yet validated across all 8 phases.
+### P3 — Login Banner
+- `tuigreet` displays `Linux` from `/etc/os-release` PRETTY_NAME — needs `Aero Linux`.
 
 ### Test Infrastructure
 - `/tmp/OVMF_VARS.4m.fd` retains UEFI boot state across QEMU sessions — stale state can cause PXE fallthrough. Use `install --clean` or delete manually.
@@ -75,30 +86,28 @@ Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). A
 
 ## Roadmap: Alpha Stabilization
 
-### Priority 1 — Complete System Validation
-- [ ] Fix login banner: update `/etc/os-release` PRETTY_NAME to show `Aero Linux`
-- [ ] Verify NetworkManager DHCP connectivity
-- [ ] Verify PipeWire audio output
-- [ ] Verify yay AUR helper installs packages
-- [ ] Verify first-boot.service: Snapper create-config, AUR packages, snapshots, self-disable
-- [ ] Verify snapper-boot.service enabled and functional
+### Priority 1 — Fix Snapper Integration
+- [ ] Investigate `/.snapshots`: `btrfs subvolume show`, `mount | grep snapshots`, `file`
+- [ ] If normal directory: remove it, `sudo snapper -c root create-config /`
+- [ ] If subvolume: inspect first-boot.sh ordering and installer integration
+- [ ] Verify `snapper list-configs`, `snapper list`, initial snapshot creation
+- [ ] Fix `snapper-boot.service` (add `[Install]` section, enable it)
 - [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`)
-- [ ] Reboot idempotency (first-boot does NOT run again)
-- [ ] Investigate empty home directory
 
-### Priority 2 — Begin Vim Motion Philosophy Implementation
+### Priority 2 — Fix Audio Stack
+- [ ] Package `alsa-utils` (add to `packages.x86_64` or `desktop.packages`)
+- [ ] Verify audio output: `speaker-test` or `pw-play`
+- [ ] Investigate `auto_null` default sink configuration
+
+### Priority 3 — Fix Login Branding
+- [ ] Update `/etc/os-release` PRETTY_NAME to `Aero Linux`
+
+### Priority 4 — Begin Vim Motion Philosophy Implementation
 - [ ] Design home-row navigation scheme for Hyprland (Super + hjkl / vim-style)
 - [ ] Document unified keybinding philosophy
 - [ ] Implement consistent keybindings across Hyprland, Waybar, Ghostty, walker
-- [ ] Keyboard-first workflow documentation
 
-### Priority 3 — Home-Row-First Desktop Experience
-- [ ] Vim-style navigation across entire OS
-- [ ] Consistent keybinding philosophy documented
-- [ ] Reduce mouse dependency wherever possible
-- [ ] Modal workflow design for desktop interaction
-
-### Priority 4 — Polish & UX Improvements
+### Priority 5 — Polish & UX Improvements
 - [ ] Installer error handling and recovery
 - [ ] BIOS bootloader fix
 - [ ] NVIDIA pacman hook fix
@@ -145,20 +154,38 @@ A complete keyboard-first operating system where the user rarely leaves the home
 
 ### Current State
 - **Version**: v0.1.1-alpha ("Aero Alpha")
-- **Status**: ALPHA — First successful desktop boot achieved
+- **Status**: ALPHA — First usable Hyprland session achieved
 - **Boot**: ✅ Limine → kernel → greetd → Hyprland desktop
 - **Desktop**: ✅ Waybar, Ghostty, Neovim working
-- **Wallpaper**: ✅ hyprpaper (migrated from swaybg — pending rebuild verification)
-- **test.sh**: ✅ ISO auto-discovery + `install --clean` support
+- **Wallpaper**: ✅ hyprpaper — fixed and verified
+- **Networking**: ✅ DHCP + internet confirmed
+- **yay**: ✅ installed and functional
+- **Services**: ✅ systemctl --failed = 0 (all healthy)
+- **Audio**: 🟡 PipeWire active — Dummy Output (alsa-utils missing)
+- **Snapper**: 🔴 not initialized — investigation needed
+
+### Known Bugs (P1-P3)
+- **P1 — Snapper**: `/.snapshots` exists but configs empty. Hypothesis: not a real Btrfs subvolume. Run `sudo btrfs subvolume show /.snapshots` to confirm.
+- **P2 — Audio**: `alsa-utils` not packaged → `aplay` missing → Dummy Output. Add `alsa-utils` to packages.
+- **P3 — Login**: `/etc/os-release` PRETTY_NAME shows `Linux` instead of `Aero Linux`.
 
 ### Next Session Goals
-1. Full system validation (NetworkManager, PipeWire, yay, snapper, services)
-2. Fix remaining bugs (login banner, empty home, snapshot boot entry)
-3. Verify all services (`systemctl --failed`, snapper, network, audio)
-4. Begin Vim Motion Philosophy implementation
-5. Continue Alpha stabilization
+1. Finish Snapper investigation: `btrfs subvolume show /.snapshots`, `file /.snapshots`, `mount | grep snapshots`
+2. Fix Snapper integration (remove normal dir if needed, `create-config`, verify)
+3. Fix audio: package `alsa-utils`, verify `pw-play`
+4. Fix login branding: update `/etc/os-release` PRETTY_NAME
+5. Begin Vim Motion Philosophy implementation
 
-### Exact Commands to Run
+### Investigation Commands (run inside installed system)
+```bash
+sudo btrfs subvolume show /.snapshots
+mount | grep snapshots
+file /.snapshots
+pacman -Q alsa-utils
+cat /etc/os-release | grep PRETTY_NAME
+```
+
+### Build + Install + Boot
 ```bash
 sudo bash build.sh                     # Build ISO
 bash test.sh install --clean           # Fresh install
@@ -168,33 +195,26 @@ bash test.sh boot                      # Boot installed system
 ### Validation Commands (run inside installed system)
 ```bash
 systemctl --failed                     # Systemd service health
-snapper list                           # Snapper configs and snapshots
+snapper list-configs                   # Snapper configs
+snapper list                           # Snapshots
 systemctl status snapper-boot          # Boot-time snapshot service
 ip a                                   # Network interfaces
 ping archlinux.org                     # Internet connectivity
 wpctl status                           # PipeWire audio graph
+pacman -Q alsa-utils                   # Audio utilities
+speaker-test -c 2 -l 1 -t wav         # Audio test
 yay --version                          # AUR helper
 hyprctl version                        # Hyprland compositor
 pgrep hyprpaper                        # Wallpaper daemon
-ls -la ~                               # User home contents
 cat /etc/aero-firstboot-complete       # First-boot marker
-cat /etc/os-release | grep PRETTY_NAME # Login banner check
-```
-
-### Build & Test Commands
-```bash
-sudo bash build.sh                     # Build ISO
-bash test.sh install --clean           # Fresh install (deletes old qcow2 + OVMF)
-bash test.sh install                   # Fast re-install (reuse existing qcow2)
-bash test.sh boot                      # Boot installed system
-bash test.sh cleanup                   # Remove test disk only
+findmnt /.snapshots                    # Snapshot mount status
 ```
 
 ### Key Architecture Decisions
 - ESP mounted at `/boot` (FAT32, kernel/initramfs on FAT for Limine compatibility)
 - Limine v12 config uses `/Title` syntax (not `entry "Title"`)
 - Kernel paths use `boot():/vmlinuz-linux` prefix
-- Snapper initialization deferred to first-boot service
+- Snapper initialization deferred to first-boot service (may need re-architecture)
 - All scripts are pure Bash — zero Python dependencies
 - TUI rendering goes to `/dev/tty`, return values to stdout, logs to stderr
 - `test.sh` supports `install --clean` for fresh qcow2 + OVMF_VARS

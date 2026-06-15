@@ -2,7 +2,7 @@
 
 **Version 0.1.1-alpha** — "Aero Alpha"
 
-Project status: ALPHA — First successful desktop boot achieved. Alpha stabilization phase.
+Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1), Audio alsa-utils (P2), Login banner (P3) outstanding.
 
 ---
 
@@ -154,22 +154,19 @@ Project status: ALPHA — First successful desktop boot achieved. Alpha stabiliz
 
 ## Known Bugs (Alpha)
 
-### Desktop & Login
-- [ ] **Login banner shows `Linux` instead of `Aero Linux`**: `/etc/os-release` PRETTY_NAME needs update.
-- [ ] **Empty home directory**: XDG user directories (Desktop, Downloads, etc.) may not be created.
-- [ ] **Desktop wallpaper intentionally black until first-boot**: hyprpaper migration complete. Wallpaper set by `aero-theme apply catppuccin` during first-boot Phase 7.
+### P1 — Snapper Not Initialized
+- [ ] Investigate `/.snapshots`: `sudo btrfs subvolume show /.snapshots`, `mount | grep snapshots`, `file /.snapshots`
+- [ ] If normal directory: remove it, retry `sudo snapper -c root create-config /`
+- [ ] If subvolume: inspect first-boot.sh ordering and Snapper integration
+- [ ] Fix `snapper-boot.service` (add `[Install]` section, enable it)
+- [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`)
 
-### Snapper
-- [ ] `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error`. Root cause unknown. Workaround: first-boot init.
-- [ ] `snapper-boot.service` lacks `[Install]` section — never enabled by any script.
-- [ ] Snapshot boot entry (`/Aero Linux (snapshot)`) untested.
+### P2 — Audio: alsa-utils Missing
+- [ ] Package `alsa-utils` (add to `packages.x86_64` or `desktop.packages`)
+- [ ] Verify audio output: `speaker-test` or `pw-play`
 
-### Service Validation (Pending)
-- [ ] NetworkManager DHCP connectivity in QEMU user NAT
-- [ ] PipeWire audio output
-- [ ] yay AUR helper package installation
-- [ ] first-boot.service end-to-end (all 8 phases)
-- [ ] Reboot idempotency
+### P3 — Login Banner
+- [ ] Fix `/etc/os-release` PRETTY_NAME from `Linux` to `Aero Linux`
 
 ### Test Infrastructure
 - [ ] OVMF_VARS persistence — stale state causes PXE fallthrough. Use `install --clean`.
@@ -187,38 +184,29 @@ Project status: ALPHA — First successful desktop boot achieved. Alpha stabiliz
 
 ## Current Phase: Alpha Stabilization
 
-### Priority 1 — Complete System Validation
-- [ ] Fix login banner: update `/etc/os-release` PRETTY_NAME
-- [ ] Verify NetworkManager connects (DHCP in QEMU user NAT)
-- [ ] Verify PipeWire audio functional (`pw-play` test)
-- [ ] Verify yay AUR helper available and installs a package
-- [ ] Verify first-boot.service runs end-to-end:
-  - [ ] Phase 2 — Snapper create-config (root + home)
-  - [ ] Aero custom snapper config templates applied
-  - [ ] Phase 3 — AUR packages from `aur.packages` via yay
-  - [ ] Phase 4 — Initial snapper snapshots
-  - [ ] Phase 5 — XDG user directories
-  - [ ] Phase 6 — Hardware detection
-  - [ ] Phase 7 — Branding (wallpaper, theme)
-  - [ ] Phase 8 — Service self-disable, `/etc/aero-firstboot-complete` created
-- [ ] Verify snapper-boot.service enabled
+### Priority 1 — Fix Snapper Integration
+- [ ] Investigate `/.snapshots`: `btrfs subvolume show`, `mount | grep snapshots`, `file`
+- [ ] If normal directory: remove it, `sudo snapper -c root create-config /`
+- [ ] If subvolume: inspect first-boot.sh ordering and installer integration
+- [ ] Verify snapper list-configs, snapper list, initial snapshot creation
+- [ ] Fix snapper-boot.service (add [Install] section, enable it)
 - [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`) boots correctly
-- [ ] Reboot idempotency (first-boot does NOT run again)
-- [ ] Investigate empty home directory (XDG user dirs)
 
-### Priority 2 — Begin Vim Motion Philosophy Implementation
+### Priority 2 — Fix Audio Stack
+- [ ] Package `alsa-utils` (add to `packages.x86_64` or `desktop.packages`)
+- [ ] Test audio: `speaker-test -c 2 -l 1 -t wav` or `pw-play`
+- [ ] Investigate `auto_null` default sink — configure PipeWire ALSA compatibility
+
+### Priority 3 — Fix Login Branding
+- [ ] Update `/etc/os-release` PRETTY_NAME from `Linux` to `Aero Linux`
+
+### Priority 4 — Begin Vim Motion Philosophy Implementation
 - [ ] Design home-row navigation scheme for Hyprland (Super + hjkl / vim-style)
 - [ ] Document unified keybinding philosophy
 - [ ] Implement consistent keybindings across Hyprland, Waybar, Ghostty, walker
 - [ ] Keyboard-first workflow documentation
 
-### Priority 3 — Home-Row-First Desktop Experience
-- [ ] Vim-style navigation across entire OS
-- [ ] Consistent keybinding philosophy documented
-- [ ] Reduce mouse dependency wherever possible
-- [ ] Modal workflow design for desktop interaction
-
-### Priority 4 — Polish & Bug Fixes
+### Priority 5 — Polish & Bug Fixes
 - [ ] Installer error handling and recovery
 - [ ] BIOS bootloader fix
 - [ ] NVIDIA pacman hook fix
@@ -247,5 +235,5 @@ Project status: ALPHA — First successful desktop boot achieved. Alpha stabiliz
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Version 0.1.1-alpha** — "Aero Alpha". First successful desktop boot. Alpha stabilization phase.
+- **Version 0.1.1-alpha** — "Aero Alpha". First usable Hyprland session. Snapper (P1) and Audio alsa-utils (P2) pending.
 - Philosophy: Vim Motion Philosophy Distribution — keyboard-first, home-row-centric, mouse-optional.

@@ -2,10 +2,10 @@
 
 **Version 0.1.1-alpha** — "Aero Alpha"
 
-> **Checkpoint: ALPHA — First Successful Desktop Boot (2026-06-14)**
-> System installs, boots via Limine, launches Hyprland desktop. Wallpaper migrated to hyprpaper.
-> Test 1 ✅ verified. Test 2 ✅ verified. Test 3 ✅ verified (desktop boots). Test 4 deferred until Beta.
-> Focus now: Alpha stabilization, system validation, Vim Motion Philosophy integration.
+> **Checkpoint: ALPHA — First Usable Hyprland Session (2026-06-14)**
+> System installs, boots via Limine, launches Hyprland desktop. Wallpaper fixed. Networking, yay, systemd services verified.
+> Tests 1-3 ✅ verified (desktop boots, services healthy, wallpaper fixed). Test 4 deferred until Beta.
+> Focus now: Snapper (P1), Audio alsa-utils (P2), Login branding (P3), Vim Philosophy (P4).
 
 ## Prerequisites
 
@@ -145,11 +145,13 @@ bash test.sh boot
 - [x] Hyprland desktop reaches graphical session
 - [x] Waybar visible at top of screen
 - [x] Ghostty terminal available (`Super + Enter`)
-- [ ] NetworkManager connected (DHCP via QEMU user NAT) — pending validation
-- [ ] `snapper list` shows root and home configs — pending validation
-- [ ] Snapper snapshots exist (`snapper -c root list`) — pending validation
-- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run) — pending validation
-- [ ] Reboot and re-test: first-boot does NOT run again — pending validation
+- [x] NetworkManager connected (DHCP via QEMU user NAT) — ✅ verified
+- [x] Wallpaper displays (hyprpaper) — ✅ verified
+- [ ] Snapper create-config on first boot — not initialized, investigation needed
+- [ ] `snapper list` shows root and home configs — P1
+- [ ] Snapper snapshots exist (`snapper -c root list`) — P1
+- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run) — pending investigation
+- [ ] Reboot and re-test: first-boot does NOT run again — pending investigation
 
 ---
 
@@ -213,34 +215,31 @@ After a successful boot of the installed system, check:
 
 ## Appendix: Known Bugs (Alpha)
 
-### Desktop & Login
-- **Login banner shows `Linux` instead of `Aero Linux`**: `/etc/os-release` PRETTY_NAME needs update.
-- **Empty home directory**: XDG user directories may not be created on fresh install.
-- **Desktop wallpaper intentionally black until first-boot**: hyprpaper migration complete. Wallpaper set by `aero-theme apply catppuccin` during first-boot Phase 7.
+### P1 — Snapper Not Initialized
+- `/.snapshots` exists but `/etc/snapper/configs` is empty. `snapper list-configs` returns no configs.
+- Hypothesis: `/.snapshots` is an ordinary directory, not a Btrfs subvolume.
+- **Investigate**: `sudo btrfs subvolume show /.snapshots`, `mount | grep snapshots`, `file /.snapshots`.
+- **If normal dir**: remove it, `sudo snapper -c root create-config /`.
+- `snapper-boot.service` lacks `[Install]` section — never enabled.
+- Snapshot boot entry untested.
+
+### P2 — Audio: alsa-utils Missing
+- PipeWire + WirePlumber active but default sink is `auto_null` (Dummy Output).
+- `aplay` not found — `alsa-utils` not packaged.
+- RTKit/BlueZ/libcamera warnings present but expected/non-fatal in QEMU VM.
+- **Fix**: Add `alsa-utils` to package list.
+
+### P3 — Login Banner
+- `tuigreet` displays `Linux` from `/etc/os-release` PRETTY_NAME — should show `Aero Linux`.
 
 ### OVMF Variable Persistence
-- `/tmp/OVMF_VARS.4m.fd` retains UEFI boot state across QEMU sessions
-- Stale variables can cause PXE fallthrough even with valid bootloader
+- `/tmp/OVMF_VARS.4m.fd` retains UEFI boot state across QEMU sessions.
+- Stale variables can cause PXE fallthrough.
 - **Fix:** `bash test.sh install --clean` (deletes it automatically) or `rm -f /tmp/OVMF_VARS.4m.fd`
 
 ### Test Disk Reuse
-- `/tmp/aero-test-disk.qcow2` is NOT overwritten on re-install — old install data persists
+- `/tmp/aero-test-disk.qcow2` is NOT overwritten on re-install — old install data persists.
 - **Fix:** `bash test.sh install --clean` (deletes it automatically) or `rm -f /tmp/aero-test-disk.qcow2`
-- For iterative desktop testing, reuse is *intentional* — preserves VM state for faster iteration
-
-### Snapper arch-chroot Failure
-- `snapper -c root create-config /` fails in chroot with `IO Error`
-- Root cause unknown — Btrfs subvolumes and snapshots directory are valid
-- **Workaround:** already implemented — runs on first boot via `aero-firstboot.service`
-- `snapper-boot.service` lacks `[Install]` section — never enabled by any script
-
-### Service Validation (Pending)
-- NetworkManager DHCP connectivity in QEMU user NAT
-- PipeWire audio output
-- yay AUR helper package installation
-- first-boot.service end-to-end (all 8 phases)
-- Snapshot boot entry (`/Aero Linux (snapshot)`)
-- Reboot idempotency
 
 ### Other Known Issues
 - BIOS bootloader install broken (UEFI-only for now)
