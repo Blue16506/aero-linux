@@ -1,12 +1,12 @@
 # Aero Linux — Project Status
 
-**Version 0.1.1-alpha** — "Aero Alpha"
+**Version 0.1.1-alpha** — "First Boot"
 
-Last updated: 2026-06-14 (End-of-day wrap — first usable Hyprland session validated)
+Last updated: 2026-06-16 (End-of-day wrap — Snapper root cause identified and fix implemented)
 
 Project status: **ALPHA — First usable Hyprland session achieved**
 
-Reason: Installer works, bootloader works, desktop works, networking works (DHCP + internet confirmed), yay works, PipeWire/WirePlumber active, systemctl --failed = 0, wallpaper fixed, mouse/keyboard work, home directory created correctly. Outstanding: Snapper initialization (P1), audio alsa-utils packaging (P2), login branding (P3).
+Reason: Installer works, bootloader works, desktop works, networking works, yay works, PipeWire/WirePlumber active, systemctl --failed = 0, wallpaper fixed, mouse/keyboard work, home directory created correctly. Snapper (P1) root cause identified and fix implemented — awaiting ISO rebuild + QEMU verification. Audio alsa-utils (P2) and login branding (P3) remaining.
 
 Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). All pre-1.0 versions carry the `-alpha` suffix.
 
@@ -14,10 +14,10 @@ Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). A
 
 ## Milestone: v0.1.1-alpha — First Usable Hyprland Session
 
-### Achievements
+### Achievements (v0.1.1-alpha)
 - ✅ ISO builds and boots (UEFI via systemd-boot)
 - ✅ Interactive TUI installer (partitioning, subvolumes, pacstrap, arch-chroot)
-- ✅ Btrfs filesystem with subvolumes (@, @home, @cache, @log, @snapshots)
+- ✅ Btrfs filesystem with subvolumes (@, @home, @cache, @log) — Snapper manages `.snapshots`
 - ✅ Limine UEFI bootloader operational (BOOTX64.EFI, limine.conf, /Title syntax)
 - ✅ Kernel boots via `boot():/vmlinuz-linux`, initramfs loads correctly
 - ✅ Root filesystem mounts (Btrfs `@` subvolume)
@@ -36,27 +36,29 @@ Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). A
 - ✅ Mouse and keyboard input working
 - ✅ Home directory created correctly with user files
 - ✅ First usable Hyprland desktop session achieved
+- ✅ Snapper root cause identified (installer pre-created `@snapshots` — Snapper couldn't own it)
+- ✅ Architectural decision (Option A): Snapper owns `.snapshots` creation
+- ✅ Installer changes: removed `@snapshots` subvol/mount, added `snapper create-config` in chroot
+- ✅ `snapper-boot.service` enabled during install
 
 ### In Progress
 
 **Current Phase: Alpha Stabilization**
-- Investigate and fix Snapper initialization (P1)
-- Package `alsa-utils` for audio (P2)
-- Fix login banner branding (P3)
-- Begin Vim Motion Philosophy integration
-- Polish and UX improvements
+- ✅ P1 Snapper — root cause found, fix implemented, awaiting ISO rebuild + QEMU verification
+- P2 Audio alsa-utils — pending
+- P3 Login branding — pending
+- Vim Motion Philosophy integration — on deck
+- Polish and UX improvements — backlog
 
 ---
 
 ## Known Bugs (Alpha)
 
-### P1 — Snapper Not Initialized
-- `/.snapshots` exists but `/etc/snapper/configs` is empty. `snapper list-configs` returns no configs.
-- `snapper -c root create-config /` fails — hypothesis: `/.snapshots` is an **ordinary directory**, not a Btrfs subvolume.
-- **Investigate**: `sudo btrfs subvolume show /.snapshots`, `mount | grep snapshots`, `file /.snapshots`.
-- **If normal dir**: remove it safely, retry `sudo snapper -c root create-config /`.
-- **If subvolume**: inspect first-boot.sh ordering and Snapper integration.
-- `snapper-boot.service` lacks `[Install]` section — never enabled by any script.
+### P1 — Snapper Not Initialized — **FIX IMPLEMENTED, AWAITING VERIFICATION**
+- **Root cause**: Installer pre-created `@snapshots` subvolume and mounted at `/.snapshots`. `snapper create-config /` failed because `/.snapshots` already existed. `/etc/snapper/configs/root` was never generated.
+- **Architectural decision (Option A)**: Snapper owns `.snapshots` creation. Installer should not pre-create.
+- **Fix**: Removed `@snapshots` creation/mount from `aero-install`. `snapper -c root create-config /` and `snapper -c home create-config /home` run inside `arch-chroot`. Aero config overlaid after create-config. `snapper-boot.service` enabled.
+- **Verification needed**: `sudo bash build.sh → bash test.sh install --clean → bash test.sh boot` then verify inside installed system.
 - Snapshot boot entry (`/Aero Linux (snapshot)`) untested.
 
 ### P2 — Audio: alsa-utils Missing
@@ -86,12 +88,14 @@ Versioning: `Major.Minor.Patch` (e.g., `0.1.1-alpha`, `0.2.0-alpha`, `1.0.0`). A
 
 ## Roadmap: Alpha Stabilization
 
-### Priority 1 — Fix Snapper Integration
-- [ ] Investigate `/.snapshots`: `btrfs subvolume show`, `mount | grep snapshots`, `file`
-- [ ] If normal directory: remove it, `sudo snapper -c root create-config /`
-- [ ] If subvolume: inspect first-boot.sh ordering and installer integration
-- [ ] Verify `snapper list-configs`, `snapper list`, initial snapshot creation
-- [ ] Fix `snapper-boot.service` (add `[Install]` section, enable it)
+### Priority 1 — Fix Snapper Integration — **IMPLEMENTED, AWAITING VERIFICATION**
+- [x] Root cause identified: `@snapshots` pre-creation in installer conflicts with Snapper's own `create-config`
+- [x] Architectural decision: Option A — Snapper owns `.snapshots` creation
+- [x] Removed `@snapshots` subvolume creation and mount from `aero-install`
+- [x] Added `snapper create-config /` and `snapper create-config /home` in chroot
+- [x] Snapper configs overlaid with Aero templates
+- [x] `snapper-boot.service` enabled during install
+- [ ] Verify with ISO rebuild + QEMU: `sudo bash build.sh && bash test.sh install --clean && bash test.sh boot`
 - [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`)
 
 ### Priority 2 — Fix Audio Stack
@@ -153,70 +157,125 @@ A complete keyboard-first operating system where the user rarely leaves the home
 ## START HERE NEXT SESSION
 
 ### Current State
-- **Version**: v0.1.1-alpha ("Aero Alpha")
+- **Version**: v0.1.1-alpha ("First Boot")
 - **Status**: ALPHA — First usable Hyprland session achieved
-- **Boot**: ✅ Limine → kernel → greetd → Hyprland desktop
-- **Desktop**: ✅ Waybar, Ghostty, Neovim working
-- **Wallpaper**: ✅ hyprpaper — fixed and verified
-- **Networking**: ✅ DHCP + internet confirmed
-- **yay**: ✅ installed and functional
-- **Services**: ✅ systemctl --failed = 0 (all healthy)
-- **Audio**: 🟡 PipeWire active — Dummy Output (alsa-utils missing)
-- **Snapper**: 🔴 not initialized — investigation needed
+- **Snapper (P1)**: 🟡 root cause found, fix implemented — awaiting ISO rebuild + QEMU verification
+- **Audio (P2)**: pending
+- **Login (P3)**: pending
 
-### Known Bugs (P1-P3)
-- **P1 — Snapper**: `/.snapshots` exists but configs empty. Hypothesis: not a real Btrfs subvolume. Run `sudo btrfs subvolume show /.snapshots` to confirm.
-- **P2 — Audio**: `alsa-utils` not packaged → `aplay` missing → Dummy Output. Add `alsa-utils` to packages.
-- **P3 — Login**: `/etc/os-release` PRETTY_NAME shows `Linux` instead of `Aero Linux`.
-
-### Next Session Goals
-1. Finish Snapper investigation: `btrfs subvolume show /.snapshots`, `file /.snapshots`, `mount | grep snapshots`
-2. Fix Snapper integration (remove normal dir if needed, `create-config`, verify)
-3. Fix audio: package `alsa-utils`, verify `pw-play`
-4. Fix login branding: update `/etc/os-release` PRETTY_NAME
-5. Begin Vim Motion Philosophy implementation
-
-### Investigation Commands (run inside installed system)
-```bash
-sudo btrfs subvolume show /.snapshots
-mount | grep snapshots
-file /.snapshots
-pacman -Q alsa-utils
-cat /etc/os-release | grep PRETTY_NAME
-```
+### Next-Session Checklist
+1. **Build ISO and test Snapper fix:**
+   ```bash
+   sudo bash build.sh
+   bash test.sh install --clean
+   bash test.sh boot
+   ```
+2. **Verify inside installed system:**
+   ```bash
+   sudo snapper list-configs              # Expect: root + home
+   sudo btrfs subvolume show /.snapshots  # Expect: valid btrfs subvolume
+   sudo ls /etc/snapper/configs           # Expect: root + home files
+   sudo systemctl status snapper-boot     # Expect: enabled
+   sudo snapper -c root list              # Expect: initial snapshots
+   systemctl --failed                     # Expect: 0
+   ```
+3. **If P1 passes:** Mark Snapper as VERIFIED. Proceed to P2 (alsa-utils).
+4. **If P1 fails:** Revert or adjust fix based on failure mode.
+5. **Then P3:** Login branding (`/etc/os-release` PRETTY_NAME).
+6. **Then Vim Motion Philosophy:** Home-row navigation design.
 
 ### Build + Install + Boot
 ```bash
 sudo bash build.sh                     # Build ISO
-bash test.sh install --clean           # Fresh install
+bash test.sh install --clean           # Fresh install (required for filesystem changes)
 bash test.sh boot                      # Boot installed system
 ```
 
 ### Validation Commands (run inside installed system)
 ```bash
-systemctl --failed                     # Systemd service health
-snapper list-configs                   # Snapper configs
-snapper list                           # Snapshots
-systemctl status snapper-boot          # Boot-time snapshot service
-ip a                                   # Network interfaces
-ping archlinux.org                     # Internet connectivity
-wpctl status                           # PipeWire audio graph
-pacman -Q alsa-utils                   # Audio utilities
-speaker-test -c 2 -l 1 -t wav         # Audio test
-yay --version                          # AUR helper
-hyprctl version                        # Hyprland compositor
-pgrep hyprpaper                        # Wallpaper daemon
-cat /etc/aero-firstboot-complete       # First-boot marker
-findmnt /.snapshots                    # Snapshot mount status
+sudo snapper list-configs              # Snapper status
+sudo btrfs subvolume show /.snapshots  # Subvolume validation
+sudo ls /etc/snapper/configs           # Config files
+sudo systemctl status snapper-boot     # Boot snapshot service
+sudo snapper -c root list              # Initial snapshots
+systemctl --failed                     # Service health
 ```
 
 ### Key Architecture Decisions
 - ESP mounted at `/boot` (FAT32, kernel/initramfs on FAT for Limine compatibility)
 - Limine v12 config uses `/Title` syntax (not `entry "Title"`)
 - Kernel paths use `boot():/vmlinuz-linux` prefix
-- Snapper initialization deferred to first-boot service (may need re-architecture)
+- **Snapper**: Option A adopted — Snapper owns `.snapshots` creation. Installer no longer pre-creates `@snapshots`.
 - All scripts are pure Bash — zero Python dependencies
 - TUI rendering goes to `/dev/tty`, return values to stdout, logs to stderr
-- `test.sh` supports `install --clean` for fresh qcow2 + OVMF_VARS
-- `test.sh` auto-discovers newest ISO in `out/` (no daily date hardcode edits)
-- Wallpaper: hyprpaper (Hyprland-native) replaces swaybg (Sway-only) for wallpaper display
+- testing: `install --clean` for fresh state, `install` for fast iteration
+
+---
+
+## Session Summary — 2026-06-16
+
+### What Was Discovered
+- **Snapper root cause**: Installer pre-created `@snapshots` subvolume. `snapper create-config /` failed because `/.snapshots` already existed. `/etc/snapper/configs/root` was never generated.
+- **Architectural decision**: Adopted Option A — Snapper owns `.snapshots` creation. Removed all `@snapshots` logic from installer. `snapper create-config /` now runs inside `arch-chroot`.
+- **Installer changes**: Removed `btrfs subvolume create /mnt/@snapshots` (Phase 3). Removed `.snapshots` from mkdir and removed `mount ... subvol=@snapshots` (Phase 4). Added `snapper -c root create-config /`, `snapper -c home create-config /home`, config template overlay, and `systemctl enable snapper-boot` (Phase 8 chroot).
+
+### Files Changed
+- `airootfs/usr/local/bin/aero-install` — core fix (installer)
+- `README.md`, `PROJECT_STATUS.md`, `PROJECT_CONTEXT.md`, `TODO.md`, `TESTING.md` — documentation
+
+### Risks Remaining
+1. Fix not tested end-to-end — needs ISO rebuild + QEMU install
+2. `/.snapshots` directory collision possible if `pacstrap` creates the path
+3. Snapshot boot entry (`/Aero Linux (snapshot)`) untested — `X` placeholder needs replacement
+
+### Next-Session Checklist
+1. `sudo bash build.sh`
+2. `bash test.sh install --clean`
+3. `bash test.sh boot`
+4. Verify: `snapper list-configs`, `btrfs subvolume show /.snapshots`, `ls /etc/snapper/configs`, `systemctl status snapper-boot`, `snapper -c root list`
+5. If P1 passes: mark VERIFIED, proceed to P2 (alsa-utils) then P3 (login branding) then Vim Motion Philosophy
+
+---
+
+## Handoff — Quickstart for a New OpenCode Session
+
+### Project State
+- **Repo**: Aero Linux — custom Arch Linux distribution, v0.1.1-alpha "First Boot"
+- **Build**: `sudo bash build.sh` → `out/aero-linux-*.iso` (auto-discovered by test.sh)
+- **Test**: `bash test.sh install --clean && bash test.sh boot`
+- **Language**: Pure Bash (zero Python). TUI via `/dev/tty`.
+
+### Status Summary
+| Priority | Issue | Status |
+|----------|-------|--------|
+| P1 | Snapper not initialized | Fix implemented, awaiting verification |
+| P2 | Audio alsa-utils missing | Pending |
+| P3 | Login banner shows `Linux` | Pending |
+
+### What Works
+- ISO builds, boots, installer works, Hyprland desktop runs
+- Networking, yay, systemd services all healthy
+- Wallpaper (hyprpaper), mouse/keyboard, home directory
+
+### Key Files
+- `airootfs/usr/local/bin/aero-install` — installer (573 lines, all Bash)
+- `airootfs/usr/share/aero/scripts/first-boot.sh` — post-install setup (194 lines)
+- `airootfs/etc/systemd/system/snapper-boot.service` — boot snapshot service
+- `airootfs/etc/snapper/config-templates/root` and `/home` — Snapper config templates
+- `packages.x86_64` — ISO package list
+- `build.sh` — ISO build wrapper
+- `test.sh` — QEMU test helper
+
+### Btrfs Layout
+```
+@          → /          (root subvolume, contains /.snapshots as nested subvolume)
+@home      → /home      (home subvolume, contains /home/.snapshots as nested subvolume)
+@cache     → /var/cache (excluded from snapshots)
+@log       → /var/log   (excluded from snapshots)
+```
+Snapper creates `/.snapshots` and `/home/.snapshots` via `snapper create-config`, not the installer.
+
+### Testing Conventions
+- `install --clean`: fresh qcow2 + fresh OVMF_VARS (for filesystem/bootloader/installer changes)
+- `install`: reuse existing qcow2 (for desktop/config/service changes, faster iteration)
+- `boot`: boot the installed system in QEMU

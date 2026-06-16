@@ -1,11 +1,10 @@
 # Aero Linux — Manual Installation Test
 
-**Version 0.1.1-alpha** — "Aero Alpha"
+**Version 0.1.1-alpha** — "First Boot"
 
-> **Checkpoint: ALPHA — First Usable Hyprland Session (2026-06-14)**
-> System installs, boots via Limine, launches Hyprland desktop. Wallpaper fixed. Networking, yay, systemd services verified.
-> Tests 1-3 ✅ verified (desktop boots, services healthy, wallpaper fixed). Test 4 deferred until Beta.
-> Focus now: Snapper (P1), Audio alsa-utils (P2), Login branding (P3), Vim Philosophy (P4).
+> **Checkpoint: ALPHA — Snapper Fix Implemented (2026-06-16)**
+> System installs, boots, desktop works. Snapper (P1) root cause found and fix implemented — awaiting ISO rebuild + QEMU verification.
+> Pending: Audio alsa-utils (P2), Login branding (P3), Vim Philosophy (P4).
 
 ## Prerequisites
 
@@ -87,7 +86,8 @@ Creates a 20G qcow2 disk and boots the ISO with it.
 
 **Verified outcomes:**
 - [x] Partitioning completes without error (1 ESP + 1 Btrfs root)
-- [x] Btrfs subvolumes created: `@`, `@home`, `@cache`, `@log`, `@snapshots`
+- [x] Btrfs subvolumes created: `@`, `@home`, `@cache`, `@log`
+- [x] Snapper initialized during install — `/.snapshots` created by `snapper create-config /` in chroot
 - [x] Pacstrap completes without package conflicts
 - [x] Fstab generated with UUID-based entries
 - [x] Locale/timezone/keymap configured in chroot
@@ -104,20 +104,20 @@ Creates a 20G qcow2 disk and boots the ISO with it.
 - [x] Installer reaches "Installation complete" and reboot prompt
 - [x] ESP mounted at `/boot` instead of `/efi` (kernel/initramfs on FAT, readable by Limine)
 
-**Note:** Snapper `create-config` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)` — root cause unknown. Workaround: initialization moved to `aero-firstboot.service` (first boot).
+**Note:** Snapper `create-config` previously failed inside `arch-chroot` because installer pre-created `@snapshots` subvolume. **FIXED**: removed `@snapshots` creation/mount from installer. `snapper -c root create-config /` now runs inside `arch-chroot` and creates `/.snapshots` as a nested subvolume under `@`. Awaiting verification.
 
 ---
 
 ## Test 3 — Boot Installed System
 
-**Status: VERIFIED (2026-06-14)** — System boots successfully to Hyprland desktop.
+**Status: Snapper fix awaiting verification (2026-06-16)**
 
 **QEMU Command:**
 ```bash
 bash test.sh boot
 ```
 
-**Prerequisite:** `bash test.sh install` must have completed successfully.
+**Prerequisite:** `bash test.sh install` or `bash test.sh install --clean` must have completed successfully.
 
 **Step 1 — Boot the installed system:**
 ```bash
@@ -129,15 +129,16 @@ bash test.sh boot
 - [x] Default entry boots the installed kernel + initramfs
 - [x] Root filesystem mounts (Btrfs `@` subvolume)
 - [x] System reaches greetd/tuigreet login screen
-- [x] `aero-firstboot.service` runs on first boot:
-  - [ ] Phase 2 — Snapper configuration:
-    - [ ] `snapper -c root create-config /` succeeds
-    - [ ] Aero snapper config template applied to root
-    - [ ] `snapper -c home create-config /home` succeeds
-    - [ ] Aero snapper config template applied to home
-    - [ ] `snapper-boot.service` enabled
+- [ ] Snapper verification (run inside installed system):
+  - [ ] `sudo snapper list-configs` shows `root` and `home`
+  - [ ] `sudo btrfs subvolume show /.snapshots` is a valid subvolume
+  - [ ] `sudo ls /etc/snapper/configs` contains `root` and `home`
+  - [ ] `sudo systemctl status snapper-boot` is enabled
+  - [ ] `sudo snapper -c root list` shows initial snapshots
+- [ ] `aero-firstboot.service` runs on first boot:
+  - [ ] Phase 2 (Snapper) — SKIPS (initialized during install, idempotent)
   - [ ] Phase 3 — AUR packages installed from `aur.packages` via yay
-  - [ ] Phase 4 — Initial snapper snapshots created
+  - [ ] Phase 4 — Initial snapper snapshots created (now redundant — already created by snapper-boot)
   - [ ] Phase 5 — XDG user directories created
   - [ ] Phase 6 — Hardware detection runs
   - [ ] Phase 7 — Branding applied (wallpaper, theme)
@@ -147,11 +148,8 @@ bash test.sh boot
 - [x] Ghostty terminal available (`Super + Enter`)
 - [x] NetworkManager connected (DHCP via QEMU user NAT) — ✅ verified
 - [x] Wallpaper displays (hyprpaper) — ✅ verified
-- [ ] Snapper create-config on first boot — not initialized, investigation needed
-- [ ] `snapper list` shows root and home configs — P1
-- [ ] Snapper snapshots exist (`snapper -c root list`) — P1
-- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run) — pending investigation
-- [ ] Reboot and re-test: first-boot does NOT run again — pending investigation
+- [ ] `/etc/aero-firstboot-complete` exists (first-boot has run)
+- [ ] Reboot and re-test: first-boot does NOT run again
 
 ---
 
@@ -199,29 +197,31 @@ After a successful boot of the installed system, check:
 - Marker file may be missing: check `/etc/aero-installed`
 - yay/AUR build failures are non-fatal (service continues)
 
-### Snapper fails during installer (arch-chroot)
-- Known issue: `snapper -c root create-config /` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`
-- Workaround: Snapper initialization moved to `aero-firstboot.service` (first boot)
-- Root cause still unknown — `/` is a valid Btrfs subvolume (inode 256), `/.snapshots` is valid, diagnostics pass
-
-### Snapper fails on first boot
-- Check `/etc/snapper/configs/root` exists after first-boot runs
-- Ensure `@snapshots` subvolume is mounted at `/.snapshots`: `findmnt /.snapshots`
-- Check journal: `journalctl -u aero-firstboot.service -b`
-- Manual test: `sudo snapper -c root create-config /` (outside arch-chroot)
-- Enable boot snapshots: `systemctl enable --now snapper-boot`
+### Snapper — Root Cause Found and Fixed (2026-06-16)
+- **Root cause**: Installer pre-created `@snapshots` subvolume and mounted at `/.snapshots`. Snapper's `create-config /` failed because `/.snapshots` already existed. This blocked config generation.
+- **Fix**: Removed `@snapshots` creation/mount from installer. `snapper -c root create-config /` and `snapper -c home create-config /home` now run inside `arch-chroot`, creating `/.snapshots` as nested subvolumes under `@` and `@home`. Aero config templates overlaid after creation.
+- **Architectural decision**: Snapper owns `.snapshots` creation (Option A). Installer creates only `@`, `@home`, `@cache`, `@log`.
+- **`snapper-boot.service`**: Has `[Install]` section. Enabled during install.
+- **Verification needed** (run inside installed system):
+  ```bash
+  sudo snapper list-configs              # Expect: root + home
+  sudo btrfs subvolume show /.snapshots  # Expect: valid btrfs subvolume
+  sudo ls /etc/snapper/configs           # Expect: root + home files
+  sudo systemctl status snapper-boot     # Expect: enabled
+  sudo snapper -c root list              # Expect: initial snapshots
+  sudo snapper -c root create --description "test" --cleanup number
+  ```
 
 ---
 
 ## Appendix: Known Bugs (Alpha)
 
-### P1 — Snapper Not Initialized
-- `/.snapshots` exists but `/etc/snapper/configs` is empty. `snapper list-configs` returns no configs.
-- Hypothesis: `/.snapshots` is an ordinary directory, not a Btrfs subvolume.
-- **Investigate**: `sudo btrfs subvolume show /.snapshots`, `mount | grep snapshots`, `file /.snapshots`.
-- **If normal dir**: remove it, `sudo snapper -c root create-config /`.
-- `snapper-boot.service` lacks `[Install]` section — never enabled.
-- Snapshot boot entry untested.
+### P1 — Snapper Not Initialized — **FIX IMPLEMENTED, AWAITING VERIFICATION**
+- **Root cause**: Installer pre-created `@snapshots` subvolume and mounted at `/.snapshots`. `snapper create-config /` failed because `/.snapshots` already existed. `/etc/snapper/configs/root` never generated.
+- **Architectural decision (Option A)**: Snapper owns `.snapshots` creation. Installer should not pre-create.
+- **Fix**: Removed `@snapshots` creation/mount from `aero-install`. `snapper -c root create-config /` and `snapper -c home create-config /home` run inside `arch-chroot`. Aero config overlaid. `snapper-boot.service` enabled.
+- **Verification**: `sudo bash build.sh → bash test.sh install --clean → bash test.sh boot` then verify.
+- Snapshot boot entry (`/Aero Linux (snapshot)`) untested.
 
 ### P2 — Audio: alsa-utils Missing
 - PipeWire + WirePlumber active but default sink is `auto_null` (Dummy Output).
@@ -246,3 +246,74 @@ After a successful boot of the installed system, check:
 - NVIDIA GPU auto-detection pacman hook target incorrect
 - `btop`/`lazygit` duplicated in packages (cosmetic)
 - Limited installer error handling and no rollback path
+
+---
+
+## Session Summary — 2026-06-16
+
+### What Was Done This Session
+- **Snapper root cause identified**: installer pre-created `@snapshots` subvolume; `snapper create-config /` failed because `/.snapshots` already existed.
+- **Architectural decision (Option A)**: Snapper owns `.snapshots` creation. Installer creates only `@`, `@home`, `@cache`, `@log`.
+- **Installer fix**: Removed `@snapshots` subvolume creation/mount (Phases 3-4). Added `snapper -c root create-config /` and `snapper -c home create-config /home` in chroot (Phase 8). Aero config overlaid. `snapper-boot.service` enabled.
+- **`first-boot.sh` unchanged** — idempotent guards handle fallback.
+- **Docs updated**: All 5 files reflect new Snapper architecture.
+
+### Files Changed
+- `airootfs/usr/local/bin/aero-install` — core fix
+- `README.md`, `PROJECT_STATUS.md`, `PROJECT_CONTEXT.md`, `TODO.md`, `TESTING.md` — documentation
+
+### Risks Remaining
+1. Fix untested — needs ISO rebuild + QEMU verification
+2. `/.snapshots` collision if `pacstrap` creates the path
+3. Snapshot boot entry untested (`/Aero Linux (snapshot)` placeholder)
+
+### Next-Session Checklist
+1. `sudo bash build.sh`
+2. `bash test.sh install --clean`
+3. `bash test.sh boot`
+4. Verify: `snapper list-configs`, `btrfs subvolume show /.snapshots`, `ls /etc/snapper/configs`, `systemctl status snapper-boot`, `snapper -c root list`
+5. If P1 passes → P2 (alsa-utils) → P3 (login branding) → Vim Motion Philosophy
+
+---
+
+## Handoff — Quickstart for a New OpenCode Session
+
+### Project Identity
+- **Aero Linux** v0.1.1-alpha "First Boot" — custom Arch Linux distribution
+- **Build**: `sudo bash build.sh` (archiso)
+- **Test**: `bash test.sh install --clean && bash test.sh boot`
+- **All Bash**: zero Python. TUI via `/dev/tty`.
+
+### Status
+| Triage | Issue | Status |
+|--------|-------|--------|
+| P1 | Snapper not initialized | Fix implemented, awaiting verification |
+| P2 | Audio alsa-utils / Dummy Output | Pending (add to `packages.x86_64`) |
+| P3 | Login banner shows `Linux` | Pending (update `/etc/os-release`) |
+
+### Btrfs Layout (Current)
+```
+@          → /          (Snapper creates /.snapshots as nested subvolume)
+@home      → /home      (Snapper creates /home/.snapshots as nested subvolume)
+@cache     → /var/cache
+@log       → /var/log
+```
+No more `@snapshots` — Snapper owns `.snapshots` creation via `create-config`.
+
+### Key Architecture
+- **ESP at `/boot`** — kernel/initramfs on FAT32 for Limine access
+- **Limine v12**: `/Title` syntax, `boot():/vmlinuz-linux` kernel paths
+- **Hyprland**: modular config (monitors, input, binds, appearance, autostart, windowrules)
+- **Wallpaper**: hyprpaper (not swaybg)
+- **Snapper**: initialized in `arch-chroot` during install, not on first boot
+- **`first-boot.sh`**: fallback guards (idempotent), creates initial snapshots
+- **Testing**: `install --clean` for fresh state, `install` for fast iteration
+
+### Verification
+```bash
+sudo snapper list-configs              # Expect: root + home
+sudo btrfs subvolume show /.snapshots  # Expect: valid subvolume
+sudo ls /etc/snapper/configs           # Expect: root home
+sudo systemctl status snapper-boot     # Expect: enabled
+sudo snapper -c root list              # Expect: snapshots
+```

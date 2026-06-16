@@ -280,7 +280,6 @@ btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@log
-btrfs subvolume create /mnt/@snapshots
 ok
 
 umount /mnt
@@ -292,11 +291,10 @@ umount /mnt
 info "Mounting subvolumes..."
 mount -o compress=zstd,subvol=@ "$ROOT_PART" /mnt
 
-mkdir -p /mnt/{home,var/cache,var/log,.snapshots}
+mkdir -p /mnt/{home,var/cache,var/log}
 mount -o compress=zstd,subvol=@home "$ROOT_PART" /mnt/home
 mount -o compress=zstd,subvol=@cache "$ROOT_PART" /mnt/var/cache
 mount -o compress=zstd,subvol=@log "$ROOT_PART" /mnt/var/log
-mount -o compress=zstd,subvol=@snapshots "$ROOT_PART" /mnt/.snapshots
 
 if $UEFI; then
     mkdir -p /mnt/boot
@@ -439,8 +437,15 @@ systemctl enable greetd
 systemctl enable NetworkManager
 systemctl enable pipewire pipewire-pulse wireplumber --global
 
-# First-boot service (snapper-boot is enabled by first-boot.sh)
+# Snapper: let Snapper own .snapshots subvolume creation
+snapper -c root create-config /
+snapper -c home create-config /home
+cp /usr/share/aero/configs/snapper/root /etc/snapper/configs/root
+cp /usr/share/aero/configs/snapper/home /etc/snapper/configs/home
+
+# First-boot + snapshot services
 systemctl enable aero-firstboot
+systemctl enable snapper-boot
 
 CHROOT
 ok
