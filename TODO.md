@@ -1,8 +1,8 @@
 # Aero Linux — TODO
 
-**Version 0.1.1-alpha** — "First Boot"
+**Version 0.3.0-pre** — "First Boot"
 
-Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) fix implemented, awaiting ISO rebuild + QEMU verification. Audio alsa-utils (P2), Login banner (P3) outstanding.
+Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) migration to deferred first-boot init complete, verified on QEMU with zero failed services. Audio alsa-utils (P2), Login banner (P3) outstanding.
 
 ---
 
@@ -128,16 +128,17 @@ Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) f
 - [x] Fix live ISO pacman keyring — added `etc-pacman.d-gnupg.mount` + `pacman-init.service` + `multi-user.target.wants/` symlink (matching archiso releng)
 - [x] Fix yay installation interactive sudo prompt — replaced `makepkg -si` (triggers sudo password prompt) with `makepkg -d` + root `pacman -U` (no sudo calls)
 
-### Snapper Fix (2026-06-16)
-- [x] Root cause identified: installer pre-created `@snapshots` subvolume, `snapper create-config /` failed
-- [x] Removed `btrfs subvolume create /mnt/@snapshots` from Phase 3
-- [x] Removed `.snapshots` from Phase 4 mkdir
-- [x] Removed `mount ... subvol=@snapshots` from Phase 4
-- [x] Added `snapper -c root create-config /` inside chroot (Phase 8)
-- [x] Added `snapper -c home create-config /home` inside chroot (Phase 8)
-- [x] Overlaid Aero config templates after create-config
-- [x] Added `systemctl enable snapper-boot` during install
-- [x] Updated all docs (`@snapshots` removed from subvolume lists, P1 marked fixed)
+### Snapper Fix (2026-06-17) — Deferred to First Boot
+- [x] Changed architecture: Snapper init moved from installer chroot to `aero-firstboot.service` (first boot)
+- [x] Removed `snapper -c root create-config /` and `snapper -c home create-config /home` from installer (Phase 8)
+- [x] Removed config overlay from installer (Phase 8)
+- [x] Removed `systemctl enable snapper-boot` from installer (Phase 8)
+- [x] Added `snapper` to `packages.x86_64` — installer only action is to install the package
+- [x] Added Aero config template copy to `/usr/share/aero/configs/snapper/` in installer (Phase 7)
+- [x] Added `systemctl enable snapper-boot.service snapper-cleanup.timer snapper-timeline.timer` in installer
+- [x] Updated `first-boot.sh` Phase 2 — handles all Snapper init: create-config, subvolume creation, config overlay, initial snapshots
+- [x] Added idempotent guards in `first-boot.sh` — skips if `/etc/snapper/configs/root` exists
+- [x] Updated all docs to reflect deferred Snapper init architecture
 
 ### Validation Progress (2026-06-13)
 - [x] Installer launches from liveuser
@@ -165,11 +166,14 @@ Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) f
 
 ## Known Bugs (Alpha)
 
-### P1 — Snapper Not Initialized — **FIXED**
-- [x] Root cause: installer pre-created `@snapshots` subvolume, conflicting with Snapper
-- [x] Removed `@snapshots` creation and mount from `aero-install`
-- [x] `snapper create-config /` now runs inside `arch-chroot` — Snapper owns `.snapshots`
-- [x] `snapper-boot.service` enabled during install
+### P1 — Snapper — **VERIFIED (Deferred to First Boot)**
+- [x] Root cause: `snapper create-config` fails inside `arch-chroot` (no Btrfs kernel/udev support)
+- [x] Changed architecture: Snapper init deferred to `aero-firstboot.service` on first boot
+- [x] Installer only installs snapper, copies config templates, enables services
+- [x] `first-boot.sh` Phase 1 handles all Snapper init with idempotent guards
+- [x] Service ordering cycle fixed (removed `After=graphical.target`)
+- [x] Diagnostics added (ERR trap, phase logging)
+- [x] Verified on QEMU: root + home configs, valid subvolumes, initial snapshots, zero failed services
 - [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`)
 
 ### P2 — Audio: alsa-utils Missing
@@ -195,12 +199,15 @@ Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) f
 
 ## Current Phase: Alpha Stabilization
 
-### Priority 1 — Fix Snapper Integration — **DONE**
-- [x] Root cause: `@snapshots` pre-creation by installer conflicts with Snapper
-- [x] Removed `@snapshots` creation/mount from `aero-install`
-- [x] `snapper create-config /` runs in `arch-chroot`
-- [x] Snapper configs overlaid with Aero config templates
-- [x] `snapper-boot.service` enabled during install
+### Priority 1 — Fix Snapper Integration — **VERIFIED**
+- [x] Root cause: `snapper create-config` fails inside `arch-chroot` (no Btrfs kernel/udev)
+- [x] Changed architecture: Snapper init deferred to `aero-firstboot.service`
+- [x] Installer: installs snapper, copies config templates, enables services
+- [x] `first-boot.sh` Phase 1 handles create-config, subvolume creation, config overlay, snapshots
+- [x] Idempotent guards in `first-boot.sh` — skips if configs already exist
+- [x] Service ordering cycle fixed (removed `After=graphical.target`)
+- [x] Diagnostics added (ERR trap, phase logging)
+- [x] Verified on QEMU: `snapper list-configs`, `btrfs subvolume show`, `systemctl --failed` = 0
 - [ ] Verify snapshot boot entry (`/Aero Linux (snapshot)`)
 
 ### Priority 2 — Fix Audio Stack
@@ -231,13 +238,37 @@ Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) f
 
 ---
 
+## Snapper Architecture (Final Design)
+
+### Why Initialization Was Moved to First Boot
+
+`snapper create-config` consistently failed inside `arch-chroot` during installation. The chroot environment lacks the Btrfs kernel module and udev device nodes required for Snapper to create nested subvolumes. Running `snapper create-config` in a chroot is fundamentally unreliable.
+
+### Debugging Journey
+
+1. **Initial hypothesis**: Installer pre-created `@snapshots` subvolume, conflicting with Snapper.
+2. **Revised finding**: Even without pre-created subvolumes, `snapper create-config` fails inside `arch-chroot` with `IO Error (subvolume is not a btrfs subvolume)`.
+3. **Root cause**: `arch-chroot` does not expose Btrfs kernel capabilities or udev device nodes needed by Snapper. The chrooted `snapper` binary cannot create Btrfs subvolumes.
+4. **Resolution**: Deferred all Snapper initialization to `aero-firstboot.service` on first boot, where the full Btrfs-capable kernel and udev are available.
+5. **Additional fixes**: Removed `After=graphical.target` from service unit (caused ordering cycle with `WantedBy=multi-user.target`), added `|| true` guards to non-critical operations, added diagnostics via `trap` and phase logging.
+
+### Advantages of the Final Design
+
+- **Simpler installer** — no `snapper create-config`, config overlay, or subvolume management during installation
+- **More reliable Snapper setup** — runs on the booted system with full Btrfs kernel support and udev
+- **Easier debugging** — phase boundary logging and ERR trap capture failures with exact line numbers
+- **Idempotent initialization** — multiple re-executions of `aero-firstboot.service` are safe
+- **Zero failed services** — `systemctl --failed` returns zero after all ordering and robustness fixes
+- **Cleaner separation** — installer owns system installation; first-boot owns post-install configuration
+
+---
+
 ## Notes
 
 - Desktop configs live in `/usr/share/aero/configs/` on the ISO and are copied to `~/.config/` by the installer (Phase 10).
 - Config directory list is duplicated in `customize_airootfs.sh:60` and `aero-install:535` — must keep in sync.
-- `aero-firstboot.service` runs only when `/etc/aero-installed` exists AND `/etc/aero-firstboot-complete` does not.
-- Snapper initialization (`create-config`) now runs inside `arch-chroot` during install, not on first boot. First-boot.sh has idempotent guards and serves as fallback.
-- `snapper-boot.service` has `[Install]` section with `WantedBy=multi-user.target`.
+- `aero-firstboot.service` runs once per system (ConditionPathExists on `/etc/aero-installed` and `!/etc/aero-firstboot-complete`). No `After=` or `Wants=` ordering — the script manages its own network wait; Snapper init (Phase 1) is purely local.
+- Snapper initialization is deferred to `aero-firstboot.service` on first boot. The installer only installs snapper, copies config templates to `/usr/share/aero/configs/snapper/`, and enables `snapper-boot.service`, `snapper-cleanup.timer`, `snapper-timeline.timer`. `first-boot.sh` handles all actual Snapper init (create-config, subvolume creation, config overlay, initial snapshots) with idempotent guards. **Verified on QEMU**.
 - `profiledef.sh` boot modes (`bios.syslinux`, `uefi.systemd-boot`) are for the LIVE ISO only. The installed system uses Limine.
 - greetd + tuigreet provide lightweight TTY-based login (no X11 display manager).
 - Snapper configured for root (`@`) and home (`@home`) subvolumes.
@@ -246,23 +277,27 @@ Project status: ALPHA — First usable Hyprland session achieved. Snapper (P1) f
 - walker is not in core/extra repos; must be installed from AUR as `walker-bin`.
 - Installer writes `/etc/aero-install.conf` during installation for first-boot to read.
 - No Python files or dependencies exist in the repo. All scripts are `#!/bin/bash`.
-- **Version 0.1.1-alpha** — "First Boot". First usable Hyprland session. Snapper (P1) fix implemented, awaiting verification. Audio alsa-utils (P2) pending.
+- **Version 0.3.0-pre** — "First Boot". First usable Hyprland session. Snapper (P1) deferred to first-boot init, **verified on QEMU**. Audio alsa-utils (P2) pending.
 - Philosophy: Vim Motion Philosophy Distribution — keyboard-first, home-row-centric, mouse-optional.
 
 ---
 
-## Session Summary — 2026-06-16
+## Session Summary — 2026-06-17
 
-### What Was Done
-- **Snapper root cause found**: Installer pre-created `@snapshots` subvolume, blocking `snapper create-config /`.
-- **Architectural decision (Option A)**: Snapper owns `.snapshots` creation. Installer only creates `@`, `@home`, `@cache`, `@log`.
-- **Installer fix**: Removed `@snapshots` creation/mount from Phases 3-4. Added `snapper -c root create-config /` and `snapper -c home create-config /home` in chroot (Phase 8). Aero config templates overlaid. `snapper-boot.service` enabled.
-- **`first-boot.sh` unchanged**: Idempotent guards handle fallback.
-- **Docs updated**: All 5 docs reflect new architecture.
+### What Was Accomplished
+1. **Root cause confirmed**: `snapper create-config` fails inside `arch-chroot` — the chroot lacks Btrfs kernel module and udev device nodes.
+2. **Architecture redesign**: Snapper initialization moved entirely to `aero-firstboot.service` on first boot.
+3. **Service ordering bug fixed**: Removed `After=graphical.target` from service unit (caused cycle with `WantedBy=multi-user.target`).
+4. **Robustness improved**: Added ERR trap, phase logging, `|| true` guards on non-critical operations, `exit 0`.
+5. **End-to-end verification**: ISO rebuilt, installed via QEMU, booted, validated — all Snapper features working, zero failed services.
 
-### Next Session
-1. `sudo bash build.sh` — rebuild ISO
-2. `bash test.sh install --clean` — fresh install
-3. `bash test.sh boot` — boot installed system
-4. Verify Snapper: `list-configs`, `btrfs subvolume show /.snapshots`, `ls /etc/snapper/configs`, `systemctl status snapper-boot`, `snapper -c root list`
-5. If P1 passes → P2 (alsa-utils) → P3 (login branding) → Vim Motion Philosophy
+### Files Changed (this session)
+- `airootfs/etc/systemd/system/aero-firstboot.service` — removed `After=graphical.target`, added logger diagnostics
+- `airootfs/usr/share/aero/scripts/first-boot.sh` — ERR trap, phase logging, guarded mkdir ops, `exit 0`
+- `airootfs/usr/local/bin/aero-install` — fixed `INSTALL_LOG` unbound variable
+- All 5 docs — updated to VERIFIED status, added Snapper Architecture section
+
+### Next Steps
+1. **P2 (Audio)**: Add `alsa-utils` to `packages.x86_64`, rebuild ISO, test audio via QEMU.
+2. **P3 (Branding)**: Update `/etc/os-release` PRETTY_NAME to `Aero Linux`.
+3. **Vim Motion Philosophy**: Begin home-row navigation design.

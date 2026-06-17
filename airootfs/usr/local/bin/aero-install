@@ -4,9 +4,9 @@ set -euo pipefail
 # Aero Linux Installer
 # Interactive TUI-based Aero Linux installer with Hyprland desktop
 
-INSTALL_LOG="/var/log/aero-install.log"
 AERO_CONFIGS="/usr/share/aero/configs"
 AERO_SCRIPTS="/usr/share/aero/scripts"
+INSTALL_LOG="/var/log/aero-install.log"
 
 # ---------------------------------------------------------------------------
 #  Utility functions
@@ -437,15 +437,17 @@ systemctl enable greetd
 systemctl enable NetworkManager
 systemctl enable pipewire pipewire-pulse wireplumber --global
 
-# Snapper: let Snapper own .snapshots subvolume creation
-snapper -c root create-config /
-snapper -c home create-config /home
-cp /usr/share/aero/configs/snapper/root /etc/snapper/configs/root
-cp /usr/share/aero/configs/snapper/home /etc/snapper/configs/home
+# Snapper is NOT initialized here — deferred to aero-firstboot.service
+# on first boot because snapper create-config is unreliable inside arch-chroot.
+# The installer only installs snapper (via packages.x86_64), copies the
+# Aero snapper templates to /usr/share/aero/configs/snapper/, and enables
+# services. Actual snapper initialization (create-config, subvolume creation,
+# config overlay, initial snapshots) happens in first-boot.sh.
 
-# First-boot + snapshot services
 systemctl enable aero-firstboot
 systemctl enable snapper-boot
+systemctl enable snapper-cleanup.timer
+systemctl enable snapper-timeline.timer
 
 CHROOT
 ok
@@ -454,10 +456,12 @@ ok
 #  Phase 9 – Install Limine
 # ---------------------------------------------------------------------------
 
+echo "[DEBUG] Entering Phase 9 (Limine) from line $LINENO" >&2
 info "Installing Limine bootloader..."
 
 if $UEFI; then
     mkdir -p /mnt/boot/EFI/BOOT
+    echo "[DEBUG] cp BOOTX64.EFI, source: $(ls -la /usr/share/limine/BOOTX64.EFI 2>&1 || echo 'NOT FOUND')" >&2
     cp /usr/share/limine/BOOTX64.EFI /mnt/boot/EFI/BOOT/BOOTX64.EFI
     cat > /mnt/boot/EFI/BOOT/limine.conf <<'LIMINE'
 timeout: 5
@@ -481,10 +485,15 @@ timeout: 5
     module_path: boot():/initramfs-linux.img
 LIMINE
     ROOT_UUID=$(blkid -s UUID -o value "$ROOT_PART")
+    echo "[DEBUG] ROOT_UUID=$ROOT_UUID" >&2
     sed -i "s/ROOT_UUID/$ROOT_UUID/g" /mnt/boot/EFI/BOOT/limine.conf
+    echo "[DEBUG] sed limine.conf rc=$?" >&2
 else
     arch-chroot /mnt /bin/bash <<'CHROOT'
+set -x
+trap 'echo "[FATAL] BIOS CHROOT: failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 limine-install --bios /boot /dev/DISK
+echo "[DEBUG] limine-install --bios rc=$?" >&2
 cat > /boot/limine.conf <<'LIMINE'
 timeout: 5
 
@@ -506,10 +515,15 @@ timeout: 5
     cmdline: root=UUID=ROOT_UUID rw rootflags=subvol=@/.snapshots/X/snapshot quiet loglevel=3
     module_path: /boot/initramfs-linux.img
 LIMINE
+echo "[DEBUG] BIOS limine.conf written, rc=$?" >&2
 CHROOT
+    echo "[DEBUG] BIOS arch-chroot exit code: $?" >&2
     ROOT_UUID=$(blkid -s UUID -o value "$ROOT_PART")
+    echo "[DEBUG] ROOT_UUID=$ROOT_UUID" >&2
     sed -i "s/ROOT_UUID/$ROOT_UUID/g" /mnt/boot/limine.conf
+    echo "[DEBUG] sed limine.conf rc=$?" >&2
     sed -i "s|/dev/DISK|$DISK|g" /mnt/boot/limine.conf
+    echo "[DEBUG] sed DISK rc=$?" >&2
 fi
 ok
 
@@ -517,6 +531,7 @@ ok
 #  Phase 10 – Copy desktop configurations
 # ---------------------------------------------------------------------------
 
+echo "[DEBUG] Entering Phase 10 (Desktop configs) from line $LINENO" >&2
 info "Copying desktop configurations..."
 if [[ -d "$AERO_CONFIGS" ]]; then
     for dir in hypr waybar ghostty zsh mako wlogout walker; do
@@ -532,6 +547,7 @@ ok
 #  Phase 11 – Finalize
 # ---------------------------------------------------------------------------
 
+echo "[DEBUG] Entering Phase 11 (Finalize) from line $LINENO" >&2
 # Write config for first-boot script
 cat > /mnt/etc/aero-install.conf <<EOF
 USERNAME=$USERNAME

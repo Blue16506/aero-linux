@@ -1,7 +1,8 @@
-NAME="Aero Linux Live"
+NAME="Aero Linux"
 ID=aero
-PRETTY_NAME="Aero Linux Live"
-VERSION_ID="2026.06"
+PRETTY_NAME="Aero Linux 0.3.0-pre (First Boot)"
+VERSION_ID="0.3.0-pre"
+VERSION_CODENAME="First Boot"
 HOME_URL="https://github.com/aero-linux"
 SUPPORT_URL="https://github.com/aero-linux"
 BUG_REPORT_URL="https://github.com/aero-linux"

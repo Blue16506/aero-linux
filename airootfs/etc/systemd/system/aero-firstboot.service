@@ -1,15 +1,17 @@
 [Unit]
 Description=Aero Linux First Boot Setup
 Documentation=https://github.com/aero-linux
-After=network-online.target graphical.target
-Wants=network-online.target
-# Run only on an Aero-installed system where first-boot hasn't completed yet
+# No After= or Wants= ordering — the script manages its own network wait,
+# and Snapper init (Phase 1) is purely local filesystem work.
+# ConditionPathExists guards ensure idempotent one-shot execution.
 ConditionPathExists=/etc/aero-installed
 ConditionPathExists=!/etc/aero-firstboot-complete
 
 [Service]
 Type=oneshot
+ExecStartPre=/usr/bin/logger "[AERO-FIRSTBOOT] Service starting"
 ExecStart=/usr/share/aero/scripts/first-boot.sh
+ExecStartPost=/usr/bin/logger "[AERO-FIRSTBOOT] Service completed"
 RemainAfterExit=yes
 StandardOutput=journal+console
 StandardError=journal+console
