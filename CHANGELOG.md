@@ -2,6 +2,8 @@
 
 ## v0.3.0-pre ("First Boot") — 2026-06-17
 
+The first end-to-end **QEMU-verified** pre-release of Aero Linux.
+
 ### Highlights
 
 - Deferred Snapper initialization to first boot
@@ -11,17 +13,19 @@
 - Removed service self-termination (SIGTERM 15)
 - Zero failed services after installation
 - QEMU-verified end-to-end installation
+- Physical hardware support is experimental — real hardware boot currently fails before reaching the liveuser session
 
-### Release Status
+### Release Status (QEMU)
 
 | Component | Status |
 |-----------|--------|
-| Release Status | VERIFIED |
-| Installer | Working |
-| First Boot Service | Working |
-| Snapper | Working |
-| Btrfs Snapshots | Working |
+| Release Status | QEMU-VERIFIED |
+| Installer | Working (QEMU) |
+| First Boot Service | Working (QEMU) |
+| Snapper | Working (QEMU) |
+| Btrfs Snapshots | Working (QEMU) |
 | QEMU Validation | Passed |
+| Real hardware boot | ⚠️ NOT VERIFIED |
 | Known Critical Bugs | None |
 
 ### What's New
@@ -44,8 +48,9 @@
 | `packages.x86_64` | Added `snapper` package. |
 | All documentation | Updated to reflect verified Snapper architecture, final service design. |
 
-### Known Issues
+### Known Limitations
 
+- **Real hardware boot**: Live ISO does not reach the `liveuser` session on physical hardware. QEMU-verified only.
 - Audio: `alsa-utils` missing (P2)
 - Login banner: `/etc/os-release` PRETTY_NAME shows `Linux` instead of `Aero Linux` (P3)
 - Snapshot boot entry (`/Aero Linux (snapshot)`) untested

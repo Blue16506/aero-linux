@@ -6,7 +6,7 @@ Last updated: 2026-06-17 (Snapper architecture finalized and verified on QEMU)
 
 Project status: **ALPHA — First usable Hyprland session achieved**
 
-Reason: Installer works, bootloader works, desktop works, networking works, yay works, PipeWire/WirePlumber active, systemctl --failed = 0, wallpaper fixed, mouse/keyboard work, home directory created correctly. Snapper (P1) verified — initialization deferred to aero-firstboot.service, working on QEMU with zero failed services. Audio alsa-utils (P2) and login branding (P3) remaining.
+Reason: Installer works (QEMU), bootloader works, desktop works, networking works, yay works, PipeWire/WirePlumber active, systemctl --failed = 0, wallpaper fixed, mouse/keyboard work, home directory created correctly. Snapper (P1) verified — initialization deferred to aero-firstboot.service, working on QEMU with zero failed services. Real hardware boot currently fails before reaching the liveuser session. Audio alsa-utils (P2) and login branding (P3) remaining.
 
 Versioning: `Major.Minor.Patch` (e.g., `0.3.0-pre`, `0.4.0-pre`, `1.0.0`). All pre-1.0 versions carry the `-pre` suffix.
 
@@ -169,9 +169,10 @@ A complete keyboard-first operating system where the user rarely leaves the home
 - **Login (P3)**: pending
 
 ### Next Steps
-1. **P2 (Audio):** Add `alsa-utils` to `packages.x86_64`, rebuild ISO, test audio via QEMU.
-2. **P3 (Branding):** Update `/etc/os-release` PRETTY_NAME to `Aero Linux`.
-3. **Vim Motion Philosophy:** Begin home-row navigation design.
+1. **Investigate real hardware boot failure** — diagnose and fix `liveuser` session on physical hardware.
+2. **P2 (Audio):** Add `alsa-utils` to `packages.x86_64`, rebuild ISO, test audio via QEMU.
+3. **P3 (Branding):** Update `/etc/os-release` PRETTY_NAME to `Aero Linux`.
+4. **Vim Motion Philosophy:** Begin home-row navigation design.
 
 ### Build + Install + Boot
 ```bash

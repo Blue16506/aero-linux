@@ -4,7 +4,7 @@
 
 A custom Arch Linux distribution focused on simplicity, reliability, performance, and a polished Hyprland desktop experience. Builds as a bootable ArchISO with an interactive TUI installer and minimal post-installation setup.
 
-**Status:** ALPHA — First usable Hyprland session achieved (v0.3.0-pre "First Boot"). ISO builds, UEFI boots, Hyprland desktop fully functional, installer works end-to-end. Snapper (P1) migrated to deferred first-boot init — verified on QEMU, zero failed services. Audio alsa-utils (P2) and login branding (P3) pending.
+**Status:** ALPHA — First QEMU-verified Hyprland session achieved (v0.3.0-pre "First Boot"). ISO builds, UEFI boots, Hyprland desktop fully functional, installer works end-to-end (QEMU). Snapper (P1) migrated to deferred first-boot init — verified on QEMU, zero failed services. Real hardware boot currently fails before reaching the liveuser session. Audio alsa-utils (P2) and login branding (P3) pending.
 
 ## Core Goals
 
@@ -387,9 +387,10 @@ Yay is built as the normal user and installed as root. No sudoers file change ne
 2. **`/.snapshots` directory collision**: If any package creates a `/.snapshots` directory, Snapper's `create-config` could fail. No Arch package is known to do this.
 
 ### Next Steps
-1. **P2 (Audio)**: Add `alsa-utils` to `packages.x86_64`, rebuild ISO, test audio.
-2. **P3 (Branding)**: Update `/etc/os-release` PRETTY_NAME to `Aero Linux`.
-3. **Vim Motion Philosophy**: Begin home-row navigation design.
+1. **Investigate real hardware boot failure** — diagnose `liveuser` session on physical hardware.
+2. **P2 (Audio)**: Add `alsa-utils` to `packages.x86_64`, rebuild ISO, test audio.
+3. **P3 (Branding)**: Update `/etc/os-release` PRETTY_NAME to `Aero Linux`.
+4. **Vim Motion Philosophy**: Begin home-row navigation design.
 
 ---
 
@@ -408,6 +409,9 @@ bash test.sh install --clean                # Fresh QEMU install
 bash test.sh boot                           # Boot installed system
 bash test.sh live                           # Boot live ISO (no install)
 ```
+
+### Known Limitation
+- **Real hardware**: Live ISO does not reach the `liveuser` session on physical hardware. QEMU-verified only.
 
 ### P1 — Snapper (VERIFIED — Deferred to First Boot)
 - Installer creates `@`, `@home`, `@cache`, `@log` only — NO `@snapshots`

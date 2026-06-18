@@ -3,7 +3,8 @@
 **Version 0.3.0-pre** — "First Boot"
 
 > **Checkpoint: ALPHA — Snapper Verified on QEMU (2026-06-17)**
-> System installs, boots, desktop works. Snapper (P1) migrated to deferred first-boot init — **verified on QEMU**: configs, subvolumes, snapshots, zero failed services.
+> System installs, boots, desktop works **in QEMU**. Snapper (P1) migrated to deferred first-boot init — **verified on QEMU**: configs, subvolumes, snapshots, zero failed services.
+> ⚠️ Real hardware boot currently fails before reaching the `liveuser` session — under investigation.
 > Pending: Audio alsa-utils (P2), Login branding (P3), Vim Philosophy (P4).
 
 ## Prerequisites
@@ -174,9 +175,13 @@ After a successful boot of the installed system, check:
 
 ## Failure Modes & Diagnosis
 
-### ISO doesn't boot
+### ISO doesn't boot in QEMU
 - Check that OVMF firmware exists: `ls /usr/share/edk2/x64/OVMF_CODE.4m.fd`
 - Try BIOS mode: `bash test.sh live-bios`
+
+### ISO doesn't boot on real hardware
+- **Known limitation**: Aero Linux v0.3.0-pre is QEMU-verified only. Real hardware boot currently fails before reaching the `liveuser` session. This is under investigation.
+- If testing on physical hardware, report failures with hardware specifications.
 
 ### Installer hangs at timezone selector
 - The custom TUI reads from `/dev/tty` — ensure you're running QEMU with a display (not `-nographic`)
@@ -312,6 +317,7 @@ After a successful boot of the installed system, check:
 | P1 | Snapper not initialized | ✅ VERIFIED — deferred to first boot, working on QEMU |
 | P2 | Audio alsa-utils / Dummy Output | Pending (add to `packages.x86_64`) |
 | P3 | Login banner shows `Linux` | Pending (update `/etc/os-release`) |
+| H1 | Real hardware boot failure | ❌ Live ISO does not reach `liveuser` session on physical hardware |
 
 ### Btrfs Layout (Current)
 ```

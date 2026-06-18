@@ -2,9 +2,9 @@
 
 **Version 0.3.0-pre — codename "First Boot"**
 
-A bootable and installable Hyprland distribution in Alpha development. Keyboard-first, Vim-motion philosophy.
+A QEMU-verified Hyprland distribution in Alpha development. Keyboard-first, Vim-motion philosophy. Physical hardware support is experimental.
 
-> Current Status: **ALPHA — First usable Hyprland session achieved. Snapper (P1) root cause identified and fixed — initialization successfully deferred to first boot, verified on QEMU, zero failed services. Audio alsa-utils (P2) and login branding (P3) remaining.**
+> Current Status: **ALPHA — First usable Hyprland session achieved. Snapper (P1) root cause identified and fixed — initialization successfully deferred to first boot, verified on QEMU, zero failed services. Audio alsa-utils (P2) and login branding (P3) remaining. Real hardware boot currently fails before reaching the liveuser session — under investigation.**
 
 Versioning: `Major.Minor.Patch` (e.g., `0.3.0-pre`, `0.4.0-pre`, `1.0.0`). Pre-1.0 versions use the `-pre` suffix.
 
@@ -97,7 +97,7 @@ Aero Linux aims to provide:
 
 ### Milestone: v0.3.0-pre — "First Boot"
 
-The installed system boots successfully into a Hyprland desktop session with working terminal, Neovim, networking, yay, and hyprpaper wallpaper system. All core systemd services report healthy (0 failed units). Snapper (P1) root cause identified and fixed — initialization deferred to first boot, verified on QEMU with zero failed services.
+The installed system boots successfully in **QEMU** into a Hyprland desktop session with working terminal, Neovim, networking, yay, and hyprpaper wallpaper system. All core systemd services report healthy (0 failed units). Snapper (P1) root cause identified and fixed — initialization deferred to first boot, verified on QEMU with zero failed services. Physical hardware support is experimental — real hardware boot currently fails before reaching the liveuser session.
 
 #### Achievements (v0.3.0-pre)
 - ✅ ISO builds and boots (UEFI via systemd-boot)
@@ -131,7 +131,23 @@ The installed system boots successfully into a Hyprland desktop session with wor
 - ✅ `first-boot.sh` diagnostics: ERR trap + phase logging added
 - ✅ Snapper initialization verified on QEMU: configs, subvolumes, snapshots, zero failed services
 
-#### Known Issues (carried forward)
+### Validation Status
+
+| Component | Status |
+|-----------|--------|
+| QEMU installation | ✅ Verified |
+| QEMU first boot | ✅ Verified |
+| Snapper architecture | ✅ Verified |
+| Btrfs snapshots | ✅ Verified |
+| Zero failed services (QEMU) | ✅ Verified |
+| Real hardware boot | ⚠️ NOT VERIFIED |
+| Live ISO `liveuser` session (physical) | ❌ Boot fails before reaching session |
+
+### Known Limitation
+
+Aero Linux v0.3.0-pre ("First Boot") is currently considered a **QEMU-verified pre-release**. Physical hardware support is experimental. Testing on real hardware currently fails before reaching the `liveuser` desktop session. The issue is reproducible on bare metal and is being investigated.
+
+### Known Issues (carried forward)
 - ✅ **P1 — Snapper (VERIFIED)**: Snapper initialization deferred to `aero-firstboot.service` on first boot. Installer copies config templates and enables snapper services. Verified on QEMU — `snapper list-configs` shows root + home, subvolumes valid, initial snapshots created, `systemctl --failed` = 0.
 - ❌ **P2 — Audio alsa-utils missing**: PipeWire/WirePlumber active but default sink is `auto_null` (Dummy Output). `aplay` not found. Need to package `alsa-utils`.
 - ❌ **P3 — Login banner shows `Linux`**: `/etc/os-release` PRETTY_NAME needs update to `Aero Linux`.
@@ -140,7 +156,7 @@ The installed system boots successfully into a Hyprland desktop session with wor
 - ❌ Limited installer error handling (no rollback path)
 - ❌ `btop`/`lazygit` duplicated in packages
 
-#### Validation Status
+#### QEMU Validation Status
 
 | Component | Status |
 |---|---|
@@ -162,6 +178,7 @@ The installed system boots successfully into a Hyprland desktop session with wor
 | Snapper | ✅ VERIFIED — root + home configs, valid subvolumes, initial snapshots, zero failed services |
 | Snapshot boot entry | ⏳ pending |
 | BIOS boot path | 🔴 broken (UEFI-only) |
+| Real hardware boot | ❌ fails before reaching `liveuser` session (see Known Limitation above) |
 
 ---
 
@@ -237,7 +254,13 @@ Phase goal: Stabilize the Alpha by completing system validation, fixing remainin
 - [ ] Keyboard-first workflows (mouse optional)
 - [ ] System-wide motion consistency design document
 
-### Priority 5 — Polish & UX Improvements
+### Priority 5 — Real Hardware Support (v0.4.0-pre)
+- [ ] Investigate physical hardware boot failure
+- [ ] Fix failure to reach `liveuser` session on bare metal
+- [ ] Verify installation on real hardware
+- [ ] Expand hardware compatibility testing
+
+### Priority 6 — Polish & UX Improvements
 - [ ] Installer error handling and recovery
 - [ ] BIOS bootloader fix
 - [ ] NVIDIA pacman hook fix
@@ -381,7 +404,7 @@ and are deployed automatically during first boot.
 
 ## Development Status
 
-Aero Linux **v0.3.0-pre "First Boot"** has achieved its first successful desktop boot with stable Snapper integration. The installed system now:
+Aero Linux **v0.3.0-pre "First Boot"** has achieved its first QEMU-verified desktop boot with stable Snapper integration. The installed system (QEMU) now:
 
 - Boots via Limine (kernel + initramfs on FAT32 ESP)
 - Mounts Btrfs root filesystem
@@ -390,10 +413,11 @@ Aero Linux **v0.3.0-pre "First Boot"** has achieved its first successful desktop
 - Uses hyprpaper for wallpaper display (migrated from swaybg)
 
 Development is now focused on:
-1. Full system validation (NetworkManager, PipeWire, yay, Snapper, services)
-2. Fix remaining Alpha bugs (login banner, empty home, snapshot boot entry)
-3. Begin Vim Motion Philosophy integration
-4. Alpha stabilization and polish
+1. Investigate and fix real hardware boot failure (liveuser session on physical hardware)
+2. Full QEMU system validation (NetworkManager, PipeWire, yay, Snapper, services)
+3. Fix remaining Alpha bugs (login banner, audio, snapshot boot entry)
+4. Expand hardware compatibility testing
+5. Begin Vim Motion Philosophy integration
 
 ---
 
@@ -485,13 +509,16 @@ journalctl -u aero-firstboot.service -b  # Check completion log
 - **ISO output**: `out/aero-linux-YYYY.MM.DD-x86_64.iso` (auto-discovered by test.sh)
 - **All scripts**: Pure Bash, no Python. TUI via `/dev/tty`.
 
-### What Works
+### What Works (QEMU only)
 - ISO builds and boots (UEFI via systemd-boot live, Limine installed)
 - Full TUI installer (partitioning, pacstrap, chroot, bootloader, snapper service enables)
 - Hyprland desktop, Waybar, Ghostty, Neovim, wallpaper (hyprpaper)
 - NetworkManager DHCP, yay AUR helper, PipeWire/WirePlumber active
 - `systemctl --failed` = 0 (all services healthy)
 - **Snapper (P1)**: ✅ VERIFIED — deferred init to first boot, all configs/subvolumes/snapshots working, zero failed services
+
+#### Known Limitation
+- **Real hardware**: ❌ Live ISO does not reach the `liveuser` session on physical hardware. Under investigation.
 
 ### P1 — Snapper (VERIFIED — Deferred to First Boot)
 - **Root cause**: `snapper create-config` fails inside `arch-chroot` (no Btrfs kernel support). Chroot is not suitable for Snapper init.
