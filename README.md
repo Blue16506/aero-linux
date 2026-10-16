@@ -486,15 +486,3 @@ pacman -Q {snapper,hyprland,pipewire,alsa-utils}; pacman -Ql hyprland | head
 | Next | bare-metal triage, `alsa-utils`, BIOS decision, snapshot-boot tooling |
 
 **v0.3.0-pre changelog (2026-06-17, merged from CHANGELOG.md):** deferred Snapper init; idempotent root/home setup + initial snapshots; ordering-cycle fix; self-termination removal; zero failed services; QEMU-verified pipeline. Changed: first-boot service (ordering→none + logger), `first-boot.sh` (trap/phases/guards/`exit 0`, Snapper→P1), installer (`INSTALL_LOG` fix, Snapper-out-of-chroot), `packages.x86_64` (`snapper` present). Limits: hardware, audio, banner, snapshot entry, BIOS, NVIDIA hook.
-
----
-
-## 24. AI Handoff Summary
-
-**Touching this repo? Know:** Arch+Hyprland via archiso; Btrfs 4-subvol + Snapper-on-first-boot (never chroot); Limine UEFI-only; greetd→uwsm→Hyprland; 3 package lists (ISO vs first-boot repo vs AUR); first-boot deploys only hyprpaper+wallpaper to home; audio is Dummy Output (no `alsa-utils`); hardware untested; `X` snapshot entry untested; NVIDIA hook filename OK but `Type=Package`+path-target suspect; `btop`/`lazygit` duplicated; no LICENSE file (TBD); `.hhook`/`pass` bugs are stale — do not "fix" them.
-
-**Do not assume:** QEMU⇒hardware; packaged⇒working; comments⇒behavior; BIOS works; Snapper-in-install; Waybar/Ghostty auto-deployed; os-release⇒greeter text.
-
-**Priorities:** P0 bare-metal triage + audio + BIOS decision; P1 snapshot-boot + dedupe + hook + AUR verify; P2 persistence/installer hardening; P3+ Vim-motion design.
-
-*Supersedes README.md, PROJECT_CONTEXT.md, PROJECT_STATUS.md, TODO.md, TESTING.md, CHANGELOG.md, PROJECT_AUDIT.md (06-14 audit preserved in substance; dated dead-code claims noted superseded). Generated from full file reads 2026-10-16; no source/config/package/service files modified.*
