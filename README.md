@@ -24,8 +24,10 @@ Inside the live environment, run `aero-install` (or `sudo /usr/local/bin/aero-in
 
 | Environment | Status |
 |---|---|
-| QEMU UEFI live / install / first boot / desktop | ✅ Verified |
-| QEMU BIOS live | Boots (installed-system BIOS path broken) |
+| QEMU UEFI live / install / first boot / desktop | ✅ Verified (Alpha-1 chain: direct `Hyprland`) |
+| QEMU BIOS live | Boots (installer refuses BIOS mode — UEFI required) |
+| VirtualBox (EFI, 3D acceleration ON) | ✅ Live desktop launches (user-verified). Two warnings pending: `.conf` deprecation (documented, Lua migration deferred) and `start-hyprland` launch warning (fixed in code, needs rebuild + retest) |
+| VirtualBox (EFI, 3D acceleration OFF) | ❌ Hyprland/Aquamarine backend cannot initialize — 3D accel is a hard requirement (Hyprland wiki) |
 | Physical hardware | ❌ Live ISO fails before `liveuser` session |
 
 **Contents:** [1. Project Overview](#1-project-overview) · [2. Current State](#2-current-project-state) · [3. Repository Structure](#3-repository-structure) · [4. Architecture](#4-architecture) · [5. Installation](#5-installation-process) · [6. Btrfs](#6-btrfs-architecture) · [7. Snapper](#7-snapper-architecture--final-design) · [8. First Boot](#8-first-boot-system) · [9. Hyprland](#9-desktop--hyprland) · [10. Boot](#10-boot-process) · [11. Packages](#11-package-system) · [12. Config](#12-configuration-system) · [13. Versioning](#13-versioning-and-branding) · [14. Testing](#14-testing-and-verification) · [15. Known Issues](#15-known-issues-and-limitations) · [16. TODO](#16-todoroadmap) · [17. History](#17-development-history) · [18. Commands](#18-important-commands) · [19. Troubleshooting](#19-troubleshooting-guide) · [20. Critical Files](#20-files-that-are-critical-to-understand) · [21. Rules](#21-current-development-rules) · [22. Startup Guide](#22-future-opencode-session-startup-guide) · [23. Snapshot](#23-current-release-snapshot) · [24. AI Handoff](#24-ai-handoff-summary)
@@ -160,7 +162,7 @@ flowchart TD
         ISO --> SB[systemd-boot / syslinux]
         SB --> K[Kernel + initramfs]
         K --> G[greetd/tuigreet -> liveuser]
-        G --> H[Hyprland via start-hyprland/uwsm]
+        G --> H[Hyprland via start-hyprland]
         H --> I[aero-install]
     end
     subgraph INSTALL["Install"]
@@ -201,11 +203,11 @@ flowchart TD
 1. **Localization** — timezone TUI with search (`timedatectl list-timezones`), locale (en_US.UTF-8 default), keymap (auto-detect fixed via command substitution; interactive fallback).
 2. **Network** — interface list, NetworkManager attempt.
 3. **User** — username validation, hidden password + confirm; root password handling noted in audit as silently mirroring user password — treated as known security/cosmetic debt, not verified fixed.
-4. **Disk** — block device menu (`/dev/tty` rendering; fixes invisible-menu bug), destructive-confirm; **UEFI only**.
+4. **Disk** — block device menu (`/dev/tty` rendering; fixes invisible-menu bug), destructive-confirm; **UEFI only** (installer aborts on BIOS boot before touching disks).
 5. **Partitioning** — GPT: 512M FAT32 ESP + remainder Btrfs (`parted`; `parted` added to ISO pkgs after missing-dependency bug).
 6. **Subvolumes** — `mkfs.btrfs -L AERO`, create `@ @home @cache @log`, mount with `ssd,space_cache=v2`; ESP mounted at `/boot` (FAT32) so Limine reads kernel/initramfs directly.
 7. **Pacstrap** — base + `packages.x86_64` set; provider-prompt blocker (iptables/initramfs/jack) recorded as resolved in prior session; yay built via `makepkg -d` + root `pacman -U` (avoids interactive sudo prompt).
-8. **Chroot** — localtime, locale-gen, hostname, users/wheel/sudoers, NetworkManager enable, mkinitcpio `-P`, greetd/tuigreet + `start-hyprland` (uwsm) config, desktop config seeding. **No `snapper create-config` here.**
+8. **Chroot** — localtime, locale-gen, hostname, users/wheel/sudoers, NetworkManager enable, mkinitcpio `-P`, greetd/tuigreet (`--cmd start-hyprland`) config, desktop config seeding. **No `snapper create-config` here.**
 9. **Handoff** — copy Snapper templates to `/usr/share/aero/configs/snapper/`; enable `aero-firstboot`, `snapper-boot`, `snapper-cleanup.timer`, `snapper-timeline.timer`; write `/etc/aero-installed` (+ `/etc/aero-install.conf` for first-boot); Limine `BOOTX64.EFI` to ESP fallback path + `limine.conf` from template with real UUID.
 10. **Done** — unmount, summary, reboot prompt.
 
@@ -277,7 +279,7 @@ The `-` prefix on home tolerates missing home config. Guard ensures it only runs
 
 ## 9. Desktop / Hyprland
 
-`greetd (greeter user) → /usr/local/bin/aero-greeter (tuigreet wrapper) → --cmd start-hyprland → uwsm → Hyprland`. `autostart.conf` uses `uwsm-app -- hypridle/waybar/hyprpaper` + polkit-gnome agent + `systemctl --user import-environment` + `dbus-update-activation-environment` + `hyprctl setcursor`.
+`greetd (greeter user) → /usr/local/bin/aero-greeter (tuigreet wrapper) → --cmd start-hyprland → start-hyprland (Hyprland package watchdog binary) → Hyprland`. `autostart.conf` uses `uwsm-app -- hypridle/waybar/hyprpaper` + polkit-gnome agent + `systemctl --user import-environment` + `dbus-update-activation-environment` + `hyprctl setcursor`. (History: commit f48e267 switched the greeter to `start-hyprland`; during VirtualBox debugging it was reverted to direct `Hyprland`, which was misdiagnosed as the fix. Root cause was the graphics layer — VirtualBox 3D acceleration disabled. With 3D enabled the live desktop launches; the greeter was restored to `start-hyprland` — the package-recommended launcher (Arch ships `hyprland.desktop` with `Exec=/usr/bin/start-hyprland`), identical to the installer's installed-system greetd command. **Restored-but-not-yet-retested.**)
 
 Modular `~/.config/hypr/`: `hyprland.conf` sources `monitors/input/binds/appearance/autostart/windowrules` (+ deployed `hyprpaper.conf`). Live ISO keybindings include Vim-style fixes (`j/k` + arrows in selectors, `windowrule` modern syntax after Hyprland 0.55 migration, `debug.vfr` relocation, pseudotile/Ghostty-GPU options removed upstream).
 
@@ -295,7 +297,7 @@ Live: UEFI systemd-boot / BIOS syslinux → kernel+initramfs → live root → g
 
 `limine.conf` template uses `boot():/vmlinuz-linux` style paths (Limine v12 `/Title` syntax; `reboot`/`poweroff` protocols removed as unsupported). Kernel/initramfs live on FAT32 ESP at `/boot`.
 
-**Limits:** installed BIOS boot unsupported; snapshot entry untested (`subvol=@/.snapshots/X/snapshot` — `X` must become a real snapshot number; no selector tooling yet); physical-hardware boot fails pre-`liveuser` (indistinguishable so far whether ISO boot, KMS, or greetd stage).
+**Limits:** installed BIOS boot unsupported (installer guards: refuses BIOS mode pre-destruction); snapshot entry untested (`subvol=@/.snapshots/X/snapshot` — `X` must become a real snapshot number; no selector tooling yet); physical-hardware boot fails pre-`liveuser` (indistinguishable so far whether ISO boot, KMS, or greetd stage).
 
 ---
 
@@ -303,7 +305,7 @@ Live: UEFI systemd-boot / BIOS syslinux → kernel+initramfs → live root → g
 
 Three distinct lists — do not conflate:
 
-**`packages.x86_64` (ISO, minimal — actual):** `base linux linux-firmware base-devel btrfs-progs snapper archiso mkinitcpio-archiso limine syslinux parted hyprland hyprlock hypridle hyprpaper waybar uwsm greetd greetd-tuigreet ghostty zsh{,-autosuggestions,-syntax-highlighting,-completions} tmux git vim neovim nano networkmanager iwd pipewire wireplumber pipewire-pulse xdg-desktop-portal-{hyprland,gtk} polkit-gnome gnome-keyring brightnessctl playerctl pamixer grim slurp wl-clipboard swaybg fzf ripgrep fd bat eza zoxide sudo reflector pacman-contrib noto-fonts{,-emoji} ttf-jetbrains-mono-nerd starship btop lazygit`. Notably **absent:** `firefox`, `libreoffice`, `mpv`, `alsa-utils`, `pipewire-alsa/jack`, `walker`, `archinstall` (audit suggestion to drop `archinstall` already reflected — not present).
+**`packages.x86_64` (ISO, minimal — actual):** `base linux linux-firmware base-devel btrfs-progs snapper archiso mkinitcpio-archiso limine syslinux parted hyprland hyprlock hypridle hyprpaper waybar uwsm greetd greetd-tuigreet ghostty zsh{,-autosuggestions,-syntax-highlighting,-completions} tmux git vim neovim nano networkmanager iwd pipewire wireplumber pipewire-pulse xdg-desktop-portal-{hyprland,gtk} polkit-gnome gnome-keyring brightnessctl playerctl pamixer grim slurp wl-clipboard swaybg fzf ripgrep fd bat eza zoxide sudo reflector pacman-contrib noto-fonts{,-emoji} ttf-jetbrains-mono-nerd starship btop lazygit virtualbox-guest-utils`. Notably **absent:** `firefox`, `libreoffice`, `mpv`, `alsa-utils`, `pipewire-alsa/jack`, `walker`, `archinstall` (audit suggestion to drop `archinstall` already reflected — not present).
 
 **`desktop.packages` (first-boot via pacman):** `firefox libreoffice-fresh mpv imv noto-fonts-cjk ttf-ia-writer btop lazygit`.
 
@@ -312,6 +314,8 @@ Three distinct lists — do not conflate:
 **Audio inventory (actual):** `pipewire wireplumber pipewire-pulse pamixer playerctl` present; `alsa-utils`, `pipewire-alsa`, `pipewire-jack/jack2` absent → `auto_null` Dummy Output, `aplay` missing. RTKit/BlueZ/libcamera warnings in QEMU are expected non-fatal.
 
 **Duplication (confirmed):** `btop`, `lazygit` in both ISO list and `desktop.packages` — cosmetic, causes redundant reinstall at first boot.
+
+**VirtualBox guest integration (staged, untested):** `virtualbox-guest-utils` ships in the ISO (resolves cleanly from `extra`; kernel modules `vboxguest`/`vboxsf` ship in the `linux` package itself, confirmed via `modinfo`). On first boot, `hardware-detect.sh` (`oracle` virt type) ensures the utils are installed, enables `vboxservice.service` (automount + clipboard daemon), and adds human users (UID 1000–59999) to the `vboxsf` group. Shared folders additionally require: the folder configured with Automount in VirtualBox settings, and a re-login for group membership to take effect. No VirtualBox testing has been performed — do not claim it works.
 
 ---
 
@@ -362,13 +366,19 @@ Live-vs-installed: live uses systemd-boot + `liveuser`, no AUR/desktop/Snapper; 
 
 ## 15. Known Issues and Limitations
 
-**Blockers:** physical-hardware live boot fails pre-`liveuser` (unknown cause; kills bare-metal validation); installed BIOS boot unsupported (UEFI-only installer; quoted-heredoc/missing-`limine-install` history).
+**Blockers:** physical-hardware live boot fails pre-`liveuser` (unknown cause; kills bare-metal validation); installed BIOS boot unsupported — the installer now aborts with an actionable error on BIOS boot **before any destructive disk operation** (UEFI-only; broken `limine-install /dev/DISK` branch unreachable).
+
+**Implemented this session (2026-10-17) — ISO rebuild + VirtualBox retest required, do not claim fixed until then:**
+- **Hyprland exit in VirtualBox:** the greeter launch-path change in commit f48e267 (`--cmd Hyprland` → `--cmd start-hyprland`) was initially misdiagnosed as the root cause (the messages `Couldn't waitpid for hyprland` / `Hyprland exited cleanly` come from the Hyprland-package watchdog binary). The direct-launch revert did **not** fix it — the next test failed identically. **Actual root cause: VirtualBox 3D acceleration disabled.** Hyprland's Aquamarine DRM/GBM-EGL backend cannot initialize without it (official Hyprland wiki: VMs require 3D acceleration or it will not work). With 3D acceleration enabled, the VirtualBox live Hyprland desktop launches successfully (user-verified). `aero-greeter` has been restored to `--cmd start-hyprland` (the package-recommended launcher — Arch's own `hyprland.desktop` uses `Exec=/usr/bin/start-hyprland`; matches the installer's installed-system greetd command). Restored-but-not-retested.
+- **`.conf` format deprecation warning (config, not launch):** Hyprland 0.56 prints "You are using the .conf config format, support for which will be removed in Hyprland 0.57". Source evidence: all Aero configs are hyprlang `.conf` files (`airootfs/usr/share/aero/configs/hypr/*`), deployed to `~/.config/hypr/hyprland.conf` (live via `customize_airootfs.sh`, installed via installer/first-boot). Verified: the configs contain **no** legacy `windowrulev2` directives (modernized in f48e267) — the warning is triggered by the `.conf` format itself, not by a compatibility path or directive. The replacement format is a **Lua config API** (`hyprland.lua`, `hl.config{}`/`hl.bind(...)`/`hl.dsp.*`, `require()`-based splitting). Conversion is a full rewrite of 7 files and **cannot be statically verified** (the `hl` API needs a running compositor), so it is deferred — the warning is cosmetic in 0.56.x. **P0 risk: Arch is rolling — once 0.57 lands in `extra`, the next rebuild breaks the live desktop and installed sessions; the Lua migration must be completed before the next Hyprland major bump.**
+- **`Initial Setup` timezone wizard on live boot:** the "Please enter the new timezone name or number" screen is `systemd-firstboot` (ConditionFirstBoot), not `aero-firstboot.service` (which contains no timezone code). `customize_airootfs.sh` never wrote `/etc/locale.conf`/`/etc/localtime`, so the wizard ran interactively on `/dev/console`. Fixed: live env now presets `LANG=en_US.UTF-8`, `localtime → UTC`, and masks `systemd-firstboot.service`. Timezone selection remains untouched in `aero-install` (Phase 1 TUI → `/etc/localtime` for the installed system); installed-system first-boot is unchanged.
+- **Console overlap/artifacts:** `systemd-firstboot` console output racing greetd was the overlap source; additionally kernel console spam (kmsg on the VT) is now silenced via `quiet loglevel=3` on the UEFI (`efiboot/loader/entries/01-aero-linux.conf`) and BIOS (`syslinux/archiso_sys-linux.cfg`, both entries) kernel cmdlines, plus `airootfs/etc/sysctl.d/20-quiet-console.conf` (`kernel.printk = 3 3 3 3`). `journalctl -k` still retains full logs when failures occur.
 
 **High:** audio Dummy Output (`alsa-utils` missing; §11); login banner shows `Linux` in some tuigreet contexts despite correct `os-release` (cosmetic; needs greeter `issue` string check, not just os-release).
 
 **Medium:** snapshot boot `X` placeholder untested, no rollback verification; installer no rollback path, limited error handling; NVIDIA hook filename is correct (`nvidia.hook`) but hook mixes `Target=usr/lib/modules/*/vmlinuz` under `Type=Package` — path targets normally want `Type=Path`, so hook may misfire (unverified on NVIDIA hardware); `btop`/`lazygit` duplicated; root-password-mirrors-user-password debt from audit (unverified fixed).
 
-**Low/unknown:** Waybar/Ghostty home persistence gap; AUR first-boot unverified; walker keybinding dead until AUR installs; ISO ~1.8 GB (`linux-firmware` ~700 MB + `base-devel` ~200–300 MB) vs 800 MB target; `swaybg` packaged-but-unused.
+**Low/unknown:** Waybar/Ghostty home persistence gap; AUR first-boot unverified; walker keybinding dead until AUR installs; ISO ~1.8 GB (`linux-firmware` ~700 MB + `base-devel` ~200–300 MB) vs 800 MB target; `swaybg` packaged-but-unused; **host-side keyboard capture in VirtualBox**: `Super+Enter` fired on the host instead of the guest — audited guest config as correct (`binds.conf:7` `bindd = $mainMod, RETURN, Terminal, exec, ghostty`; no duplicate/conflicting binds; `ghostty` on ISO line 30) — VirtualBox keyboard-capture/host-WM issue, no repo change made.
 
 **Corrected stale claims (do not reintroduce):** no `.hhook` typo exists; no `pass`/`fi` syntax bug in `aero-theme`; `snapper-boot` has `[Install]` and is enabled (2026-06-14 audit statement superseded); `INSTALL_LOG` regression fixed.
 
@@ -376,7 +386,7 @@ Live-vs-installed: live uses systemd-boot + `liveuser`, no AUR/desktop/Snapper; 
 
 ## 16. TODO/Roadmap
 
-**P0 — Critical:** investigate bare-metal boot failure (capture Limine? kernel? greetd? stage); add `alsa-utils` (+ evaluate `pipewire-alsa`) and QEMU audio test (`speaker-test/pw-play`); decide BIOS: implement Limine-BIOS installed path or officially drop + remove `syslinux` ambiguity.
+**P0 — Critical:** investigate bare-metal boot failure (capture Limine? kernel? greetd? stage); add `alsa-utils` (+ evaluate `pipewire-alsa`) and QEMU audio test (`speaker-test/pw-play`); decide BIOS: implement Limine-BIOS installed path or officially drop + remove `syslinux` ambiguity; **Hyprland `.conf` → Lua (`hl.*` API) config migration before Hyprland 0.57 removal hits Arch `extra` (rolling — breaks live + installed desktops on next major bump; cannot be statically validated, plan VirtualBox+QEMU retest with the new files)**.
 
 **P1:** snapshot-boot design (resolve `X` → real snapshot selection/tooling, then test); dedupe `btop/lazygit`; fix NVIDIA hook `Type` mix; verify AUR + desktop first-boot lists end-to-end.
 
@@ -482,7 +492,8 @@ pacman -Q {snapper,hyprland,pipewire,alsa-utils}; pacman -Ql hyprland | head
 | Base / desktop / fs / snapshots | Arch rolling / Hyprland+uwsm / Btrfs 4-subvol / Snapper deferred |
 | Installer / first boot / testing | `aero-install` TUI / `aero-firstboot` P1–P7 / `test.sh` QEMU |
 | QEMU | ✅ verified end-to-end |
-| Hardware / BIOS / audio / snapshot-boot | ❌ fails pre-`liveuser` / ❌ UEFI-only / ❌ Dummy Output / ⏳ `X` untested |
-| Next | bare-metal triage, `alsa-utils`, BIOS decision, snapshot-boot tooling |
+| Hardware / BIOS / audio / snapshot-boot | ❌ fails pre-`liveuser` / 🛡 guarded (installer requires UEFI) / ❌ Dummy Output / ⏳ `X` untested |
+| VirtualBox | ⚠️ 3D ON: live desktop launches ✅; greeter restored to `start-hyprland` (untested); `.conf` deprecation pending Lua migration (P0 before Hyprland 0.57) |
+| Next | rebuild ISO → VirtualBox retest (start-hyprland restore + guest-utils §11), alsa-utils, bare-metal triage, Lua config migration |
 
 **v0.3.0-pre changelog (2026-06-17, merged from CHANGELOG.md):** deferred Snapper init; idempotent root/home setup + initial snapshots; ordering-cycle fix; self-termination removal; zero failed services; QEMU-verified pipeline. Changed: first-boot service (ordering→none + logger), `first-boot.sh` (trap/phases/guards/`exit 0`, Snapper→P1), installer (`INSTALL_LOG` fix, Snapper-out-of-chroot), `packages.x86_64` (`snapper` present). Limits: hardware, audio, banner, snapshot entry, BIOS, NVIDIA hook.

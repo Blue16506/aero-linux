@@ -80,6 +80,15 @@ if systemd-detect-virt -q; then
         pacman -S --noconfirm open-vm-tools 2>/dev/null || true
     elif [[ "$VIRT_TYPE" == "oracle" ]]; then
         pacman -S --noconfirm virtualbox-guest-utils 2>/dev/null || true
+        # vboxservice provides shared-folder automount + clipboard integration.
+        # Already installed via packages.x86_64; this is a no-op in that case.
+        systemctl enable vboxservice.service 2>/dev/null || true
+        # Shared-folder access requires vboxsf membership (effective on next login).
+        while IFS=: read -r u _ uid _ _ _ _; do
+            if [[ "$uid" -ge 1000 && "$uid" -lt 60000 ]]; then
+                usermod -aG vboxsf "$u" 2>/dev/null || true
+            fi
+        done < /etc/passwd
     fi
 fi
 

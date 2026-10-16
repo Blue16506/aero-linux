@@ -76,3 +76,8 @@ ttf-jetbrains-mono-nerd
 starship
 btop
 lazygit
+
+# Guest integration (VirtualBox live session + installed system)
+# Kernel modules (vboxguest/vboxsf) ship in the linux package;
+# this provides VBoxService (vboxservice.service) and userland tools.
+virtualbox-guest-utils

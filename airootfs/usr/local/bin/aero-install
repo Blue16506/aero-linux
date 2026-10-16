@@ -181,6 +181,13 @@ else
     info "Boot mode: BIOS"
 fi
 
+# Aero Linux v0.3.0-pre supports UEFI installation only. The BIOS code path
+# below is unimplemented (broken limine-install invocation) and must not run.
+# Guard here, before any destructive disk operation.
+if ! $UEFI; then
+    error "BIOS/Legacy boot detected – Aero Linux requires UEFI. Enable EFI in your firmware or VM settings (VirtualBox: Settings → System → Motherboard → Enable EFI) and reboot the ISO in UEFI mode. BIOS installation is not supported."
+fi
+
 ping -c 1 archlinux.org &>/dev/null || warn "No network detected – packages will not be downloaded"
 
 # ---------------------------------------------------------------------------

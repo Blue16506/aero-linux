@@ -8,7 +8,13 @@ set -euo pipefail
 # Set live environment defaults
 echo "KEYMAP=us" > /etc/vconsole.conf
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
 locale-gen
+ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+# Live environment must not run the interactive systemd-firstboot wizard
+# (locale/timezone prompts on the console race the greeter). All settings it
+# would ask for are preset above; the installed system is handled by aero-install.
+systemctl mask systemd-firstboot.service
 echo "aero" > /etc/hostname
 echo "127.0.1.1 aero.localdomain aero" >> /etc/hosts
 
